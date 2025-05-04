@@ -1,0 +1,4 @@
+package com.bongbong.modl.minecraft.bungee;
+
+public class BungeeCommandManager {
+}

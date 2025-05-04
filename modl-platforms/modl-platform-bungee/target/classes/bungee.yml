@@ -1,0 +1,7 @@
+name: modl
+main: com.bongbong.bungee.BungeePlugin
+version: 1.0-SNAPSHOT-2025-05-04T02:03:04Z
+author: 'tigerbong, byteful'
+description: First-class moderation and support systems
+website: https://github.com/bongbong-com/modl-minecraft
+depends: [protocolize]

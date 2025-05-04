@@ -1,0 +1,7 @@
+name: ${plugin.name}
+main: ${project.groupId}.bungee.BungeePlugin
+version: ${plugin.version}
+author: '${plugin.author}'
+description: ${plugin.description}
+website: ${plugin.url}
+depends: [protocolize]

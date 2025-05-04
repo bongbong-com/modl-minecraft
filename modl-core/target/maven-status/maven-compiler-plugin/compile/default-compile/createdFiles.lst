@@ -1,0 +1,5 @@
+com\bongbong\modl\minecraft\core\Cache.class
+com\bongbong\modl\minecraft\core\plugin\PluginInfo.class
+com\bongbong\modl\minecraft\core\Platform.class
+com\bongbong\modl\minecraft\core\PluginLoader.class
+com\bongbong\modl\minecraft\core\PlatformCommandRegister.class
