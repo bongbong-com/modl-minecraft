@@ -45,7 +45,6 @@ public final class VelocityPlugin {
         new CirrusVelocity(this, server, server.getCommandManager()).init();
 
         PluginLoader loader = new PluginLoader(new VelocityPlatform(commandManager), new VelocityCommandRegister(commandManager), folder);
-        server.getEventManager().register(this, new JoinListener());
     }
 
     @Subscribe

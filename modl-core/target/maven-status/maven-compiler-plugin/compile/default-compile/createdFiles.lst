@@ -3,3 +3,7 @@ com\bongbong\modl\minecraft\core\plugin\PluginInfo.class
 com\bongbong\modl\minecraft\core\Platform.class
 com\bongbong\modl\minecraft\core\PluginLoader.class
 com\bongbong\modl\minecraft\core\PlatformCommandRegister.class
+com\bongbong\modl\minecraft\core\commands\TicketCommand.class
+com\bongbong\modl\minecraft\core\commands\ApplyCommand.class
+com\bongbong\modl\minecraft\core\Router.class
+com\bongbong\modl\minecraft\core\commands\ReportCommand.class
