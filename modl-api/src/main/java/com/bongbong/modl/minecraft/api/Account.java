@@ -1,40 +1,26 @@
 package com.bongbong.modl.minecraft.api;
 
+import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-public record Account(
-        @NotNull UUID uuid,
-        @NotNull String username,
-        @NotNull List<Note> notes,
-        @NotNull List<IPAddress> ipList,
-        @NotNull List<Punishment> punishments,
-        @NotNull List<String> pendingNotifications
-        ) {
+@Getter
+@RequiredArgsConstructor
+public class Account {
+    @NotNull
+    @SerializedName("minecraftUuid")
+    private final UUID minecraftUuid;
 
-        public Map<String, Object> export() {
-                return Map.of(
-                        "username", username,
-                        "notes", notes.stream().map(Note::export).toList(),
-                        "ipList", ipList.stream().map(IPAddress::export).toList(),
-                        "punishments", punishments.stream().map(Punishment::export).toList(),
-                        "pendingNotifications", pendingNotifications
-                );
-        }
+    @NotNull
+    @SerializedName("username")
+    private final String username;
 
-        @SuppressWarnings("unchecked")
-        public static Account fromMap(Map<String, Object> map) {
-                return new Account(
-                        (UUID) map.get("_id"),
-                        (String) map.get("username"),
-                        new ArrayList<>(((List<Map<String, Object>>) map.get("notes")).stream().map(Note::fromMap).toList()),
-                        new ArrayList<>(((List<Map<String, Object>>) map.get("ipList")).stream().map(IPAddress::fromMap).toList()),
-                        new ArrayList<>(((List<Map<String, Object>>) map.get("punishments")).stream().map(Punishment::fromMap).toList()),
-                        new ArrayList<>((List<String>) map.get("pendingNotifications"))
-                );
-        }
+    @SerializedName("activeBans")
+    private final int activeBans;
+
+    @SerializedName("activeMutes")
+    private final int activeMutes;
 }

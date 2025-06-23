@@ -1,19 +1,27 @@
 package com.bongbong.modl.minecraft.api;
 
+import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Date;
-import java.util.Map;
 
-public record Modification(
-        @NotNull Type type,
-        @NotNull String issuer, // username or a discord name
-        @NotNull Date issued,
-        long effectiveDuration
-){
+@RequiredArgsConstructor
+@Getter
+public final class Modification {
+    @NotNull
+    @SerializedName("type")
+    private final Type type;
+    @NotNull
+    @SerializedName("issuerName")
+    private final String issuer;
+    @NotNull
+    @SerializedName("issued")
+    private final Date issued;
+    @SerializedName("effectiveDuration")
+    private final long effectiveDuration;
 
-    // Pardons/accepted appeals are wrongful, if you want to unban someone without reversing the points, change the duration 0 minutes.
     @RequiredArgsConstructor
     public enum Type {
         MANUAL_DURATION_CHANGE,
@@ -25,23 +33,5 @@ public record Modification(
         SET_WIPING_TRUE,
         SET_ALT_BLOCKING_FALSE,
         SET_WIPING_FALSE,
-    }
-
-    public Map<String, Object> export() {
-        return Map.of(
-                "type", type.ordinal(),
-                "issuer", issuer,
-                "issued", issued.getTime(),
-                "effectiveDuration", effectiveDuration
-        );
-    }
-
-    public static Modification fromMap(Map<String, Object> map) {
-        return new Modification(
-                Type.values()[(int) map.get("type")],
-                (String) map.get("issuer"),
-                new Date((long) map.get("issued")),
-                ((long) map.get("effectiveDuration"))
-        );
     }
 }

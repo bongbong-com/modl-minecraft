@@ -1,6 +1,6 @@
 package com.bongbong.modl.minecraft.api.http.response;
 
-import com.bongbong.modl.minecraft.api.Account;
+import com.bongbong.modl.minecraft.api.PlayerProfile;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
@@ -8,5 +8,5 @@ import org.jetbrains.annotations.NotNull;
 public class PlayerProfileResponse {
     private int status;
     @NotNull
-    private Account player;
+    private PlayerProfile profile;
 }

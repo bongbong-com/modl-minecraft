@@ -1,29 +1,28 @@
 package com.bongbong.modl.minecraft.api;
 
+import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Date;
-import java.util.Map;
 
-public record Note(
-        @NotNull Date issued,
-        @NotNull String issuer,
-        @NotNull String note
-) {
+@Getter
+@RequiredArgsConstructor
+public class Note {
+    @NotNull
+    @SerializedName("text")
+    private final String text;
 
-    public Map<String, Object> export() {
-        return Map.of(
-                "issued", issued.getTime(),
-                "issuer", issuer,
-                "note", note
-        );
-    }
+    @NotNull
+    @SerializedName("date")
+    private final Date date;
 
-    public static Note fromMap(Map<String, Object> map) {
-        return new Note(
-                new Date((long) map.get("issued")),
-                (String) map.get("issuer"),
-                (String) map.get("note")
-        );
-    }
+    @NotNull
+    @SerializedName("issuerName")
+    private final String issuerName;
+
+    @NotNull
+    @SerializedName("issuerId")
+    private final String issuerId;
 }
