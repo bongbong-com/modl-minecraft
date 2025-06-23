@@ -13,8 +13,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.UUID;
 
-import static com.bongbong.modl.minecraft.api.IPAddress.fromMap;
-
 public class JoinListener {
 
     @Subscribe

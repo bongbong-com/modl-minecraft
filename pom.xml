@@ -48,7 +48,7 @@
                 <role>creator</role>
                 <role>developer</role>
             </roles>
-            <timezone>America/New_York</timezone>
+            <timezone>America/Chicago</timezone>
         </developer>
     </developers>
 
@@ -97,6 +97,13 @@
                     <configuration>
                         <release>17</release>
                         <testRelease>17</testRelease>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -231,6 +238,14 @@
         <repository>
             <id>exceptionflug</id>
             <url>https://mvn.exceptionflug.de/repository/exceptionflug-public/</url>
+        </repository>
+        <repository>
+            <id>sonatype-oss</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>sonatype</id>
+            <url>https://repository.sonatype.org/content/groups/public/</url>
         </repository>
     </repositories>
 
