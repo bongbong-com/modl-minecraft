@@ -1,27 +1,28 @@
-package com.bongbong.modl.minecraft.velocity;
+package com.bongbong.modl.minecraft.bungee;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.DisconnectEvent;
-import com.velocitypowered.api.event.connection.PostLoginEvent;
+import net.md_5.bungee.api.event.PlayerDisconnectEvent;
+import net.md_5.bungee.api.event.PostLoginEvent;
+import net.md_5.bungee.api.plugin.Listener;
+import net.md_5.bungee.event.EventHandler;
 
-public class JoinListener {
+public class BungeeListener implements Listener {
 
-    private final VelocityPlatform platform;
+    private final BungeePlatform platform;
 
-    public JoinListener(VelocityPlatform platform) {
+    public BungeeListener(BungeePlatform platform) {
         this.platform = platform;
     }
 
-    @Subscribe
+    @EventHandler
     public void onPostLogin(PostLoginEvent event) {
         ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getUsername(),
-                event.getPlayer().getRemoteAddress().getAddress().getHostAddress(),
+                event.getPlayer().getName(),
+                event.getPlayer().getSocketAddress().toString(),
                 null,
                 null
         );
@@ -29,8 +30,8 @@ public class JoinListener {
         httpClient.playerLogin(request);
     }
 
-    @Subscribe
-    public void onDisconnect(DisconnectEvent event) {
+    @EventHandler
+    public void onPlayerDisconnect(PlayerDisconnectEvent event) {
         ModlHttpClient httpClient = platform.getHttpClient();
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 

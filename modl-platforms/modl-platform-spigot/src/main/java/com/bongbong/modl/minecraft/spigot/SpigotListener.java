@@ -1,27 +1,28 @@
-package com.bongbong.modl.minecraft.velocity;
+package com.bongbong.modl.minecraft.spigot;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.DisconnectEvent;
-import com.velocitypowered.api.event.connection.PostLoginEvent;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
-public class JoinListener {
+public class SpigotListener implements Listener {
 
-    private final VelocityPlatform platform;
+    private final SpigotPlatform platform;
 
-    public JoinListener(VelocityPlatform platform) {
+    public SpigotListener(SpigotPlatform platform) {
         this.platform = platform;
     }
 
-    @Subscribe
-    public void onPostLogin(PostLoginEvent event) {
+    @EventHandler
+    public void onPlayerLogin(PlayerLoginEvent event) {
         ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
-                event.getPlayer().getUsername(),
-                event.getPlayer().getRemoteAddress().getAddress().getHostAddress(),
+                event.getPlayer().getName(),
+                event.getAddress().getHostAddress(),
                 null,
                 null
         );
@@ -29,8 +30,8 @@ public class JoinListener {
         httpClient.playerLogin(request);
     }
 
-    @Subscribe
-    public void onDisconnect(DisconnectEvent event) {
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
         ModlHttpClient httpClient = platform.getHttpClient();
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 

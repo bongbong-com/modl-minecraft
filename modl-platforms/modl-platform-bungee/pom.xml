@@ -44,6 +44,10 @@
             <artifactId>modl-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.bongbong</groupId>
+            <artifactId>modl-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>co.aikar</groupId>
             <artifactId>acf-bungee</artifactId>
         </dependency>

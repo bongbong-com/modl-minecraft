@@ -38,6 +38,10 @@
             <artifactId>modl-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.bongbong</groupId>
+            <artifactId>modl-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>co.aikar</groupId>
             <artifactId>acf-velocity</artifactId>
         </dependency>
@@ -49,6 +53,12 @@
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
             <version>1.1.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
