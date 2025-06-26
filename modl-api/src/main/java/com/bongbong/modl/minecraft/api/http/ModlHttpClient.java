@@ -1,6 +1,7 @@
 package com.bongbong.modl.minecraft.api.http;
 
 import com.bongbong.modl.minecraft.api.http.request.*;
+import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
 import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import com.bongbong.modl.minecraft.api.http.response.PlayerProfileResponse;
 import org.jetbrains.annotations.NotNull;
@@ -22,7 +23,10 @@ public interface ModlHttpClient {
     CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request);
 
     @NotNull
-    CompletableFuture<Void> createTicket(@NotNull CreateTicketRequest request);
+    CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request);
+
+    @NotNull
+    CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request);
 
     @NotNull
     CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request);

@@ -11,18 +11,24 @@ import java.util.List;
 public class CreateTicketRequest {
     @NotNull
     private final String creatorUuid;
-    @NotNull
-    private final String creatorUsername;
+    @Nullable
+    private final String creatorName;
     @NotNull
     private final String type;
-    @NotNull
+    @Nullable
     private final String subject;
-    @NotNull
+    @Nullable
+    private final String description;
+    @Nullable
     private final String reportedPlayerUuid;
-    @NotNull
-    private final String reportedPlayerUsername;
+    @Nullable
+    private final String reportedPlayerName;
     @Nullable
     private final List<String> chatMessages;
     @Nullable
     private final JsonObject formData;
+    @Nullable
+    private final List<String> tags;
+    @Nullable
+    private final String priority;
 }

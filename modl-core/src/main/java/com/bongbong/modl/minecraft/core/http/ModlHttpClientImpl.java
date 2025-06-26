@@ -2,6 +2,7 @@ package com.bongbong.modl.minecraft.core.http;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.*;
+import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
 import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
 import com.bongbong.modl.minecraft.api.http.response.PlayerProfileResponse;
 import com.google.gson.Gson;
@@ -73,13 +74,23 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @NotNull
     @Override
-    public CompletableFuture<Void> createTicket(@NotNull CreateTicketRequest request) {
+    public CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/tickets"))
-                .header("X-API-Key", apiKey)
+                .uri(URI.create(baseUrl + "/api/public/tickets"))
+                .header("X-Ticket-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                .build(), Void.class);
+                .build(), CreateTicketResponse.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/public/tickets/unfinished"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), CreateTicketResponse.class);
     }
 
     @NotNull

@@ -1,0 +1,165 @@
+# MODL Minecraft Plugin - English Locale
+# Color codes: Use & for color codes (e.g., &c for red, &a for green)
+# Placeholders: {player}, {reason}, {ticketId}, {url}, {title}
+
+# General Messages
+messages:
+  prefix: "&8[&6MODL&8]&r "
+  cannot_report_self: "&cYou cannot report yourself!"
+  submitting: "&eSubmitting {type}..."
+  creating: "&eCreating {type}..."
+  success: "&a{type} submitted successfully!"
+  created: "&a{type} created successfully!"
+  ticket_id: "&7Ticket ID: &f{ticketId}"
+  view_ticket: "&7View your ticket: &b{url}"
+  complete_form: "&7Complete your {type}: &b{url}"
+  evidence_note: "&7You can add additional evidence to your ticket if needed."
+  form_title_note: "&7You can change the title '&f{title}&7' in the form before submitting."
+  failed_submit: "&cFailed to submit {type}: {error}"
+  failed_create: "&cFailed to create {type}: {error}"
+  try_again: "&cPlease try again later or contact staff directly."
+  unknown_error: "Unknown error"
+  no_details: "No additional details provided"
+
+# Report GUI Configuration
+report_gui:
+  title: "&4&lReport {player}"
+  inventory_size: 27  # 9x3 inventory (27 slots)
+  
+  # Report Categories
+  categories:
+    chat_violation:
+      item: "WRITABLE_BOOK"
+      slot: 1
+      name: "&c&lChat Violation"
+      lore:
+        - "&7Report inappropriate chat messages"
+        - "&7or language used by this player."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "chat"
+      subject: "Chat Violation"
+      
+    username:
+      item: "NAME_TAG"
+      slot: 2
+      name: "&6&lInappropriate Username"
+      lore:
+        - "&7Report an inappropriate or"
+        - "&7offensive username."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Inappropriate Username"
+      
+    skin:
+      item: "LEATHER_CHESTPLATE"
+      slot: 3
+      name: "&d&lInappropriate Skin"
+      lore:
+        - "&7Report an inappropriate or"
+        - "&7offensive player skin."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Inappropriate Skin"
+      
+    content:
+      item: "STONE_PICKAXE"
+      slot: 4
+      name: "&3&lInappropriate Content"
+      lore:
+        - "&7Report inappropriate builds,"
+        - "&7signs, or other content."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Inappropriate Content"
+      
+    team_griefing:
+      item: "DIAMOND_SWORD"
+      slot: 5
+      name: "&9&lTeam Griefing"
+      lore:
+        - "&7Report team griefing, cross-teaming,"
+        - "&7or team betrayal."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Team Griefing"
+      
+    game_rules:
+      item: "BOOK"
+      slot: 6
+      name: "&a&lGame Rule Violation"
+      lore:
+        - "&7Report violations of game rules"
+        - "&7or server-specific rules."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Game Rule Violation"
+      
+    cheating:
+      item: "REDSTONE"
+      slot: 7
+      name: "&4&lCheating/Hacking"
+      lore:
+        - "&7Report suspected cheating,"
+        - "&7hacking, or exploiting."
+        - ""
+        - "&e&lClick to report {player}"
+      report_type: "player"
+      subject: "Cheating/Hacking"
+      
+  # Close button
+  close_button:
+    item: "BARRIER"
+    slot: 22
+    name: "&c&lClose Menu"
+    lore: []
+
+# Command Help Messages
+commands:
+  report:
+    description: "Report a player - opens a GUI with customizable options"
+    usage: "/report <player> [reason]"
+    
+  chatreport:
+    description: "Report a player for inappropriate chat and save chat logs"
+    usage: "/chatreport <player> [reason]"
+    
+  bugreport:
+    description: "Report a bug - creates an unfinished report with a form link"
+    usage: "/bugreport <title>"
+    
+  support:
+    description: "Request support - creates an unfinished request with a form link"
+    usage: "/support <title>"
+
+# Chat Log Messages
+chat_logs:
+  placeholder: "(Recent chat messages would be captured here)"
+  system_note: "Chat logs automatically saved for review"
+  auto_reason: "Inappropriate chat"
+
+# Form Data
+form_data:
+  server_name: "Minecraft Server"
+  automatic_chat_log: true
+
+# Ticket Tags
+tags:
+  player_report: "player-report"
+  chat_report: "chat-report"
+  bug_report: "bug-report"
+  support: "support"
+  minecraft: "minecraft"
+  auto_logs: "auto-logs"
+
+# Ticket Priorities
+priorities:
+  chat: "high"
+  player: "medium"
+  bug: "medium"
+  support: "low"

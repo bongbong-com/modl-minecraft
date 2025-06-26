@@ -1,0 +1,12 @@
+Reference ~/Documents/GitHub/HammerV2 for GUI and such
+
+/report <player> [reason] - opens a GUI with customizable options similar to HammerV2
+will create a finished ticket and return the link to the ticket if they want to add further evidence
+
+/chatreport <player> [reason] (exact functionality also available in report GUI) - save chatlogs and create
+a finished ticket and return the link to the ticket if they want to add further evidence
+
+/bugreport <title> - create an unfinished bugreport that returns a link to the form for them to fill out (can change the title in the form before submitting)
+
+/support <title> create an unfinished support request that returns a link to the form for them to fill out (can change the title in the form before submitting)
+
