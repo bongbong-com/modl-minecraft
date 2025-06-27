@@ -146,6 +146,40 @@ public class LocaleManager {
         );
     }
     
+    @SuppressWarnings("unchecked")
+    public List<String> getCategoryNames() {
+        Object categoriesObj = getNestedValue(messages, "report_gui.categories");
+        if (categoriesObj instanceof Map) {
+            Map<String, Object> categories = (Map<String, Object>) categoriesObj;
+            return categories.keySet().stream().sorted().toList();
+        }
+        return List.of();
+    }
+    
+    public ReportCategory getBufferItem() {
+        return new ReportCategory(
+            getItemType("report_gui.buffer_item.item"),
+            0, // slot will be set dynamically
+            getMessage("report_gui.buffer_item.name"),
+            getMessageList("report_gui.buffer_item.lore"),
+            "buffer",
+            "Buffer"
+        );
+    }
+    
+    public int calculateMenuSize(int categoryCount) {
+        // Calculate minimum rows needed (categories + close button + buffer)
+        int minSlots = categoryCount + 1; // +1 for close button
+        
+        // Round up to nearest multiple of 9 (full rows)
+        int rows = (int) Math.ceil(minSlots / 9.0);
+        
+        // Minimum 3 rows, maximum 6 rows
+        rows = Math.max(3, Math.min(6, rows));
+        
+        return rows * 9;
+    }
+    
     private Object getNestedValue(Map<String, Object> map, String path) {
         String[] keys = path.split("\\.");
         Object current = map;

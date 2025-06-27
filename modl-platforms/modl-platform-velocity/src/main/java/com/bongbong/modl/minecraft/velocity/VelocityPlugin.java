@@ -62,7 +62,10 @@ public final class VelocityPlugin {
 
         VelocityPlatform platform = new VelocityPlatform(httpManager, commandManager);
         PluginLoader loader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
-        server.getEventManager().register(this, new JoinListener(platform));
+        
+        JoinListener joinListener = new JoinListener(platform);
+        server.getEventManager().register(this, joinListener);
+        server.getEventManager().register(this, new ChatListener(platform, joinListener.getPunishmentCache()));
     }
 
     @Subscribe

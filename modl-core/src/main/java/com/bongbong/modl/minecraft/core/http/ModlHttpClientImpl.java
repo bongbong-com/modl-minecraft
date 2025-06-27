@@ -4,6 +4,7 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.*;
 import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
 import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
+import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.api.http.response.PlayerProfileResponse;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
@@ -52,13 +53,13 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @NotNull
     @Override
-    public CompletableFuture<Void> playerLogin(@NotNull PlayerLoginRequest request) {
+    public CompletableFuture<PlayerLoginResponse> playerLogin(@NotNull PlayerLoginRequest request) {
         return sendAsync(HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/players/login"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                .build(), Void.class);
+                .build(), PlayerLoginResponse.class);
     }
 
     @NotNull

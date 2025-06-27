@@ -8,10 +8,13 @@ import com.bongbong.modl.minecraft.core.Platform;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.logging.Logger;
+
 @RequiredArgsConstructor
 public class BungeePlatform implements Platform {
     private final HttpManager httpManager;
     private final BungeeCommandManager commandManager;
+    private final Logger logger;
 
     @NotNull
     @Override
@@ -23,5 +26,9 @@ public class BungeePlatform implements Platform {
     @Override
     public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
         return commandManager;
+    }
+    
+    public Logger getLogger() {
+        return logger;
     }
 }

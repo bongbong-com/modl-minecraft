@@ -19,7 +19,7 @@ public class SpigotPlugin extends JavaPlugin {
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         new CirrusSpigot(this).init();
 
-        SpigotPlatform platform = new SpigotPlatform(httpManager, commandManager);
+        SpigotPlatform platform = new SpigotPlatform(httpManager, commandManager, getLogger());
         new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath());
         getServer().getPluginManager().registerEvents(new SpigotListener(platform), this);
     }
