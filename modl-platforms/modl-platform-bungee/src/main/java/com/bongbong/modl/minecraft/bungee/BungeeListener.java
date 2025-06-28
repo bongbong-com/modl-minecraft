@@ -8,6 +8,7 @@ import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.cache.PunishmentCache;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.LoginEvent;
 import net.md_5.bungee.api.event.PlayerDisconnectEvent;
@@ -94,9 +95,11 @@ public class BungeeListener implements Listener {
         if (event.isCommand() || event.getSender() == null) {
             return; // Ignore commands and non-player senders
         }
+
+        ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
         
-        if (punishmentCache.isMuted(event.getSender().getUniqueId())) {
-            Punishment mute = punishmentCache.getMute(event.getSender().getUniqueId());
+        if (punishmentCache.isMuted(sender.getUniqueId())) {
+            Punishment mute = punishmentCache.getMute(sender.getUniqueId());
             
             if (mute != null) {
                 // Cancel the chat event
@@ -104,7 +107,7 @@ public class BungeeListener implements Listener {
                 
                 // Send mute message to player
                 String muteMessage = formatMuteMessage(mute);
-                event.getSender().sendMessage(new TextComponent(muteMessage));
+                sender.sendMessage(new TextComponent(muteMessage));
             }
         }
     }

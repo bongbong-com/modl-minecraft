@@ -1,10 +1,7 @@
 package com.bongbong.modl.minecraft.api.http;
 
 import com.bongbong.modl.minecraft.api.http.request.*;
-import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
-import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
-import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
-import com.bongbong.modl.minecraft.api.http.response.PlayerProfileResponse;
+import com.bongbong.modl.minecraft.api.http.response.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -29,9 +26,20 @@ public interface ModlHttpClient {
     @NotNull
     CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request);
 
+    // Legacy methods for backward compatibility
     @NotNull
     CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request);
 
     @NotNull
     CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request);
+
+    // New methods with proper return types
+    @NotNull
+    CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request);
+
+    @NotNull
+    CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request);
+
+    @NotNull
+    CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request);
 }

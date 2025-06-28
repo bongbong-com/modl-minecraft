@@ -3,6 +3,8 @@ package com.bongbong.modl.minecraft.api.http.response;
 import com.bongbong.modl.minecraft.api.Punishment;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Data
@@ -14,7 +16,10 @@ public class PlayerLoginResponse {
     public PlayerLoginResponse(boolean success, String message, List<Punishment> activePunishments) {
         this.success = success;
         this.message = message;
-        this.activePunishments = activePunishments != null ? activePunishments : List.of();
+        // Create defensive copy to ensure immutability
+        this.activePunishments = activePunishments != null ? 
+            Collections.unmodifiableList(new ArrayList<>(activePunishments)) : 
+            List.of();
     }
     
     public boolean hasActiveBan() {

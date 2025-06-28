@@ -1,24 +1,18 @@
 package com.bongbong.modl.minecraft.core.util;
 
-import dev.simplix.protocolize.api.chat.ChatElement;
-
 public class Colors {
+    public static final String RED = "§c";
+    public static final String GREEN = "§a";
+    public static final String YELLOW = "§e";
+    public static final String BLUE = "§9";
+    public static final String DARK_RED = "§4";
+    public static final String GRAY = "§7";
+    public static final String WHITE = "§f";
+    public static final String BOLD = "§l";
+    public static final String ITALIC = "§o";
+    public static final String RESET = "§r";
     
-    /**
-     * Converts a string with & color codes to a ChatElement
-     * @param string The string with & color codes
-     * @return ChatElement with translated color codes
-     */
-    public static ChatElement<?> of(String string) {
-        return ChatElement.ofLegacyText(translate(string));
-    }
-    
-    /**
-     * Translates & color codes to § color codes
-     * @param string The string to translate
-     * @return String with translated color codes
-     */
-    public static String translate(String string) {
-        return string.replace('&', '\u00a7');
+    public static String translate(String message) {
+        return message.replace('&', '§');
     }
 }

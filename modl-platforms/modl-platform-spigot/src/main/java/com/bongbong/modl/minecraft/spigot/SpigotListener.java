@@ -62,7 +62,7 @@ public class SpigotListener implements Listener {
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
-                event.getPlayer().getAddress().getHostAddress(),
+                event.getPlayer().getAddress().getHostName(),
                 null,
                 null
         );
