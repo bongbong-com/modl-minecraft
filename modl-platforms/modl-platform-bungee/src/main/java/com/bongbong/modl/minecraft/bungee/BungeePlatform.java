@@ -2,24 +2,47 @@ package com.bongbong.modl.minecraft.bungee;
 
 import co.aikar.commands.BungeeCommandManager;
 import co.aikar.commands.CommandManager;
+import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.Platform;
+import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.UUID;
 import java.util.logging.Logger;
 
 @RequiredArgsConstructor
 public class BungeePlatform implements Platform {
-    private final HttpManager httpManager;
     private final BungeeCommandManager commandManager;
     private final Logger logger;
 
-    @NotNull
+
+
     @Override
-    public ModlHttpClient getHttpClient() {
-        return httpManager.getHttpClient();
+    public void broadcast(String string) {
+
+    }
+
+    @Override
+    public void staffBroadcast(String string) {
+
+    }
+
+    @Override
+    public void disconnect(UUID uuid, String message) {
+
+    }
+
+    @Override
+    public void sendMessage(UUID uuid, String message) {
+
+    }
+
+    @Override
+    public boolean isOnline(UUID uuid) {
+        return false;
     }
 
     @NotNull
@@ -27,7 +50,22 @@ public class BungeePlatform implements Platform {
     public CommandManager<?, ?, ?, ?, ?, ?> getCommandManager() {
         return commandManager;
     }
-    
+
+    @Override
+    public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
+        return null;
+    }
+
+    @Override
+    public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
+        return null;
+    }
+
+    @Override
+    public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
+        return null;
+    }
+
     public Logger getLogger() {
         return logger;
     }

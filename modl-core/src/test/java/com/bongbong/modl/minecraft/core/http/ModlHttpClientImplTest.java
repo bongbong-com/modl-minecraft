@@ -1,27 +1,11 @@
 package com.bongbong.modl.minecraft.core.http;
 
-import com.bongbong.modl.minecraft.api.http.request.*;
-import com.bongbong.modl.minecraft.api.http.response.*;
-import com.bongbong.modl.minecraft.api.PlayerProfile;
-import com.bongbong.modl.minecraft.api.Punishment;
+import com.bongbong.modl.minecraft.core.impl.http.ModlHttpClientImpl;
 import com.google.gson.Gson;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 // @ExtendWith(MockitoExtension.class)
 public class ModlHttpClientImplTest {

@@ -2,21 +2,9 @@ package com.bongbong.modl.minecraft.core.commands;
 
 import co.aikar.commands.CommandIssuer;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
-import com.bongbong.modl.minecraft.api.http.request.CreateTicketRequest;
-import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
+import com.bongbong.modl.minecraft.core.impl.commands.TicketCommands;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 // @ExtendWith(MockitoExtension.class)
 public class TicketCommandTest {
@@ -30,7 +18,7 @@ public class TicketCommandTest {
     @Mock
     private CommandIssuer mockIssuer;
     
-    private TicketCommand ticketCommand;
+    private TicketCommands ticketCommands;
     private final String panelUrl = "https://panel.example.com";
     
     /*

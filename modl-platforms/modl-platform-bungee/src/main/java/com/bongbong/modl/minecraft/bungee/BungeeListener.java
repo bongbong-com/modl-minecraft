@@ -5,7 +5,7 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
-import com.bongbong.modl.minecraft.core.cache.PunishmentCache;
+import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -22,11 +22,11 @@ import java.util.concurrent.CompletableFuture;
 public class BungeeListener implements Listener {
 
     private final BungeePlatform platform;
-    private final PunishmentCache punishmentCache;
+    private final Cache cache;
 
     public BungeeListener(BungeePlatform platform) {
         this.platform = platform;
-        this.punishmentCache = new PunishmentCache();
+        this.cache = new Cache();
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -71,7 +71,7 @@ public class BungeeListener implements Listener {
         
         httpClient.playerLogin(request).thenAccept(response -> {
             if (response.hasActiveMute()) {
-                punishmentCache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
             }
         }).exceptionally(throwable -> {
             platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
@@ -87,7 +87,7 @@ public class BungeeListener implements Listener {
         httpClient.playerDisconnect(request);
         
         // Remove player from punishment cache
-        punishmentCache.removePlayer(event.getPlayer().getUniqueId());
+        cache.removePlayer(event.getPlayer().getUniqueId());
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -98,8 +98,8 @@ public class BungeeListener implements Listener {
 
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
         
-        if (punishmentCache.isMuted(sender.getUniqueId())) {
-            Punishment mute = punishmentCache.getMute(sender.getUniqueId());
+        if (cache.isMuted(sender.getUniqueId())) {
+            Punishment mute = cache.getMute(sender.getUniqueId());
             
             if (mute != null) {
                 // Cancel the chat event
@@ -167,7 +167,7 @@ public class BungeeListener implements Listener {
         }
     }
     
-    public PunishmentCache getPunishmentCache() {
-        return punishmentCache;
+    public Cache getPunishmentCache() {
+        return cache;
     }
 }

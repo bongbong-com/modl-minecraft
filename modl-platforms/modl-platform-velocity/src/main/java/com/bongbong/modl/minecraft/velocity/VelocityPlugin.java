@@ -3,7 +3,6 @@ package com.bongbong.modl.minecraft.velocity;
 import co.aikar.commands.VelocityCommandManager;
 import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.PluginLoader;
-import com.bongbong.modl.minecraft.core.plugin.PluginInfo;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -15,13 +14,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.simplix.cirrus.velocity.CirrusVelocity;
 import lombok.Getter;
 import org.slf4j.Logger;
-import org.yaml.snakeyaml.Yaml;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -51,21 +45,14 @@ public final class VelocityPlugin {
 
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent evt) {
-        loadConfig();
-        HttpManager httpManager = new HttpManager(
-                (String) ((Map<String, Object>) configuration.get("api")).get("key"),
-                (String) ((Map<String, Object>) configuration.get("api")).get("url")
-        );
-
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
         new CirrusVelocity(this, server, server.getCommandManager()).init();
 
-        VelocityPlatform platform = new VelocityPlatform(httpManager, commandManager);
+        VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
         PluginLoader loader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
-        
-        JoinListener joinListener = new JoinListener(platform);
-        server.getEventManager().register(this, joinListener);
-        server.getEventManager().register(this, new ChatListener(platform, joinListener.getPunishmentCache()));
+
+        server.getEventManager().register(this, new JoinListener(loader.getHttpClient(), loader.getCache(), getLogger()));
+        server.getEventManager().register(this, new ChatListener(platform, loader.getCache()));
     }
 
     @Subscribe
@@ -73,21 +60,4 @@ public final class VelocityPlugin {
 
     }
 
-    private void loadConfig() {
-        File file = new File(folder.toFile(), "config.yml");
-
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        try (InputStream in = new FileInputStream(file)) {
-            configuration = new Yaml().load(in);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }

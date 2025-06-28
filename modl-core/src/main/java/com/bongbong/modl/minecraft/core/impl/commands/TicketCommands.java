@@ -1,4 +1,4 @@
-package com.bongbong.modl.minecraft.core.commands;
+package com.bongbong.modl.minecraft.core.impl.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
@@ -6,7 +6,8 @@ import co.aikar.commands.annotation.*;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.CreateTicketRequest;
 import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
-import com.bongbong.modl.minecraft.core.gui.ReportMenu;
+import com.bongbong.modl.minecraft.core.Platform;
+import com.bongbong.modl.minecraft.core.impl.menus.ReportMenu;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 
 @CommandAlias("report")
 @RequiredArgsConstructor
-public class TicketCommand extends BaseCommand {
-    
+public class TicketCommands extends BaseCommand {
+    private final Platform platform;
     private final ModlHttpClient httpClient;
     private final String panelUrl; // e.g., "https://myserver.modl.gg"
     private final LocaleManager locale;
@@ -54,8 +55,9 @@ public class TicketCommand extends BaseCommand {
             sendMessage(sender, locale.getMessage("messages.cannot_report_self"));
             return;
         }
+
         
-        // Save recent chat logs for the target player
+        // TODO: Save recent chat logs for the target player
         List<String> chatLogs = getChatLogs(targetPlayer);
         
         JsonObject formData = new JsonObject();
@@ -97,17 +99,14 @@ public class TicketCommand extends BaseCommand {
             senderUuid,                                         // creatorUuid
             senderName,                                         // creatorName
             "bug",                                             // type
-            locale.getMessage("commands.bugreport.description") + ": " + title, // subject
+            senderName + ": " + title, // subject
             null,                                              // description (filled in form)
             null,                                              // reportedPlayerUuid
             null,                                              // reportedPlayerName
             null,                                              // chatMessages
             null,                                              // formData (filled in form)
-            Arrays.asList(
-                locale.getMessage("tags.bug_report"), 
-                locale.getMessage("tags.minecraft")
-            ), // tags
-            locale.getPriority("bug")                          // priority
+            List.of(), // tags
+            "normal"                          // priority
         );
         
         submitUnfinishedTicket(sender, request, "Bug report", title);
@@ -125,17 +124,14 @@ public class TicketCommand extends BaseCommand {
             senderUuid,                                         // creatorUuid
             senderName,                                         // creatorName
             "support",                                          // type
-            locale.getMessage("commands.support.description") + ": " + title, // subject
+            senderName + ": " + title, // subject
             null,                                              // description (filled in form)
             null,                                              // reportedPlayerUuid
             null,                                              // reportedPlayerName
             null,                                              // chatMessages
             null,                                              // formData (filled in form)
-            Arrays.asList(
-                locale.getMessage("tags.support"), 
-                locale.getMessage("tags.minecraft")
-            ), // tags
-            locale.getPriority("support")                      // priority
+            List.of(), // tags
+            "normal"                     // priority
         );
         
         submitUnfinishedTicket(sender, request, "Support request", title);

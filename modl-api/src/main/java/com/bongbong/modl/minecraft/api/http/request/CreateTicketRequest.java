@@ -26,8 +26,6 @@ public class CreateTicketRequest {
     @Nullable
     private final List<String> chatMessages;
     @Nullable
-    private final JsonObject formData;
-    @Nullable
     private final List<String> tags;
     @Nullable
     private final String priority;

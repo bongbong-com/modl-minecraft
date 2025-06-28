@@ -1,28 +1,26 @@
 package com.bongbong.modl.minecraft.velocity;
 
 import com.bongbong.modl.minecraft.api.Punishment;
-import com.bongbong.modl.minecraft.core.cache.PunishmentCache;
+import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-import java.util.Date;
-
 public class ChatListener {
     
     private final VelocityPlatform platform;
-    private final PunishmentCache punishmentCache;
+    private final Cache cache;
     
-    public ChatListener(VelocityPlatform platform, PunishmentCache punishmentCache) {
+    public ChatListener(VelocityPlatform platform, Cache cache) {
         this.platform = platform;
-        this.punishmentCache = punishmentCache;
+        this.cache = cache;
     }
     
     @Subscribe
     public void onPlayerChat(PlayerChatEvent event) {
-        if (punishmentCache.isMuted(event.getPlayer().getUniqueId())) {
-            Punishment mute = punishmentCache.getMute(event.getPlayer().getUniqueId());
+        if (cache.isMuted(event.getPlayer().getUniqueId())) {
+            Punishment mute = cache.getMute(event.getPlayer().getUniqueId());
             
             if (mute != null) {
                 // Cancel the chat event

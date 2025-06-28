@@ -1,7 +1,7 @@
 package com.bongbong.modl.minecraft.core;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
-import com.bongbong.modl.minecraft.core.http.ModlHttpClientImpl;
+import com.bongbong.modl.minecraft.core.impl.http.ModlHttpClientImpl;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 

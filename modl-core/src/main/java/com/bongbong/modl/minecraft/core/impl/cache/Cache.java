@@ -1,31 +1,22 @@
-package com.bongbong.modl.minecraft.core.cache;
+package com.bongbong.modl.minecraft.core.impl.cache;
 
 import com.bongbong.modl.minecraft.api.Punishment;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PunishmentCache {
+public class Cache {
     
     private final Map<UUID, CachedPlayerData> cache = new ConcurrentHashMap<>();
     
     public void cacheMute(UUID playerUuid, Punishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setMute(mute);
     }
-    
-    public void cacheActivePunishments(UUID playerUuid, List<Punishment> punishments) {
-        CachedPlayerData data = cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData());
-        
-        // Cache active mute
-        punishments.stream()
-            .filter(p -> p.getType() == Punishment.Type.MUTE)
-            .findFirst()
-            .ifPresentOrElse(data::setMute, () -> data.setMute(null));
-    }
-    
+
     public boolean isMuted(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
         if (data == null || data.getMute() == null) {
@@ -71,13 +62,9 @@ public class PunishmentCache {
     }
     
     @Getter
+    @Setter
     public static class CachedPlayerData {
         private Punishment mute;
-        
-        public void setMute(Punishment mute) {
-            this.mute = mute;
-        }
-        
         public boolean isEmpty() {
             return mute == null;
         }

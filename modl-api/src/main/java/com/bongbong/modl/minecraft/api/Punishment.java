@@ -57,8 +57,7 @@ public class Punishment {
     }
     
     public String getReason() {
-        Object reason = dataMap.get("reason");
-        return reason instanceof String ? (String) reason : null;
+        return notes.get(0).getText();
     }
     
     public Date getExpires() {

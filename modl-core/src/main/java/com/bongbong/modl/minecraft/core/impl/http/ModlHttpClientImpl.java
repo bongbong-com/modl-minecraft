@@ -1,11 +1,8 @@
-package com.bongbong.modl.minecraft.core.http;
+package com.bongbong.modl.minecraft.core.impl.http;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.*;
-import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
-import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
-import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
-import com.bongbong.modl.minecraft.api.http.response.PlayerProfileResponse;
+import com.bongbong.modl.minecraft.api.http.response.*;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 
@@ -114,6 +111,24 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                 .build(), Void.class);
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request) {
+        return null;
+    }
+
+    @NotNull
+    @Override
+    public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
+        return null;
     }
 
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {

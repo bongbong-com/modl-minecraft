@@ -1,18 +1,23 @@
 package com.bongbong.modl.minecraft.core.util;
 
+import dev.simplix.protocolize.api.chat.ChatElement;
+
+import java.util.Date;
+import java.util.List;
+
 public class Colors {
-    public static final String RED = "§c";
-    public static final String GREEN = "§a";
-    public static final String YELLOW = "§e";
-    public static final String BLUE = "§9";
-    public static final String DARK_RED = "§4";
-    public static final String GRAY = "§7";
-    public static final String WHITE = "§f";
-    public static final String BOLD = "§l";
-    public static final String ITALIC = "§o";
-    public static final String RESET = "§r";
-    
-    public static String translate(String message) {
-        return message.replace('&', '§');
+    public static ChatElement<?> of(String string) {
+        return ChatElement.ofLegacyText(translate(string));
+    }
+
+    public static String translate(String string) {
+        return string.replace('&', '\u00a7');
+    }
+
+    public static String getHoverString(List<String> hover) {
+        if (hover == null) return DateFormatter.format(new Date());
+
+        String hoverString = String.join("\n", hover);
+        return DateFormatter.format(new Date()) + (hoverString.isEmpty() ? "" : "\n" + hoverString);
     }
 }

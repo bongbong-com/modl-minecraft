@@ -5,7 +5,7 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
-import com.bongbong.modl.minecraft.core.cache.PunishmentCache;
+import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -20,11 +20,11 @@ import java.util.concurrent.CompletableFuture;
 public class SpigotListener implements Listener {
 
     private final SpigotPlatform platform;
-    private final PunishmentCache punishmentCache;
+    private final Cache cache;
 
     public SpigotListener(SpigotPlatform platform) {
         this.platform = platform;
-        this.punishmentCache = new PunishmentCache();
+        this.cache = new Cache();
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -69,7 +69,7 @@ public class SpigotListener implements Listener {
         
         httpClient.playerLogin(request).thenAccept(response -> {
             if (response.hasActiveMute()) {
-                punishmentCache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
             }
         }).exceptionally(throwable -> {
             platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
@@ -85,13 +85,13 @@ public class SpigotListener implements Listener {
         httpClient.playerDisconnect(request);
         
         // Remove player from punishment cache
-        punishmentCache.removePlayer(event.getPlayer().getUniqueId());
+        cache.removePlayer(event.getPlayer().getUniqueId());
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        if (punishmentCache.isMuted(event.getPlayer().getUniqueId())) {
-            Punishment mute = punishmentCache.getMute(event.getPlayer().getUniqueId());
+        if (cache.isMuted(event.getPlayer().getUniqueId())) {
+            Punishment mute = cache.getMute(event.getPlayer().getUniqueId());
             
             if (mute != null) {
                 // Cancel the chat event
@@ -159,7 +159,7 @@ public class SpigotListener implements Listener {
         }
     }
     
-    public PunishmentCache getPunishmentCache() {
-        return punishmentCache;
+    public Cache getPunishmentCache() {
+        return cache;
     }
 }

@@ -1,4 +1,4 @@
-package com.bongbong.modl.minecraft.core.commands;
+package com.bongbong.modl.minecraft.core.impl.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
@@ -45,12 +45,10 @@ public class BanCommand extends BaseCommand {
 
         Map<String, Object> data = new HashMap<>();
         data.put("reason", reason);
-        data.put("altBlocking", altBlocking);
-        data.put("wipeAfterExpiry", statWiping);
+        if (altBlocking) data.put("altBlocking", true);
+        if (statWiping) data.put("wipeAfterExpiry", true);
         
-        if (duration > 0) {
-            data.put("duration", duration);
-        }
+        if (duration > 0) data.put("duration", duration);
 
         PunishmentCreateRequest request = new PunishmentCreateRequest(
                 targetUuid.toString(),
@@ -59,7 +57,6 @@ public class BanCommand extends BaseCommand {
                 reason,
                 duration > 0 ? duration : null,
                 data,
-                null,
                 null
         );
 

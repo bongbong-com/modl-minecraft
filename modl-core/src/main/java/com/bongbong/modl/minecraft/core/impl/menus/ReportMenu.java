@@ -1,44 +1,43 @@
-package com.bongbong.modl.minecraft.core.gui;
+package com.bongbong.modl.minecraft.core.impl.menus;
 
-import co.aikar.commands.CommandIssuer;
+import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.CreateTicketRequest;
 import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
+import com.bongbong.modl.minecraft.core.Constants;
+import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
-import com.google.gson.JsonObject;
 import dev.simplix.cirrus.item.CirrusItem;
 import dev.simplix.cirrus.menus.SimpleMenu;
 import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.data.ItemType;
 import dev.simplix.protocolize.data.inventory.InventoryType;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
 public class ReportMenu extends SimpleMenu {
     
-    private final CommandIssuer reporter;
-    private final String targetPlayer;
-    private final String reason;
+    private final AbstractPlayer hero;
+    private final AbstractPlayer villain;
+    private final String data;
     private final ModlHttpClient httpClient;
-    private final String panelUrl;
     private final LocaleManager locale;
+    private final Platform platform;
     
-    public ReportMenu(CommandIssuer reporter, String targetPlayer, String reason, ModlHttpClient httpClient, String panelUrl, LocaleManager locale) {
+    public ReportMenu(AbstractPlayer hero, AbstractPlayer villain, String data, ModlHttpClient httpClient, LocaleManager locale, Platform platform) {
         super();
-        this.reporter = reporter;
-        this.targetPlayer = targetPlayer;
-        this.reason = reason;
+        this.hero = hero;
+        this.villain = villain;
+        this.data = data;
         this.httpClient = httpClient;
-        this.panelUrl = panelUrl;
         this.locale = locale;
+        this.platform = platform;
         
-        title(locale.getMessage("report_gui.title", Map.of("player", targetPlayer)));
+        title(locale.getMessage("report_gui.title", Map.of("$villain", villain.username())));
         type(InventoryType.GENERIC_9X3); // Fixed size from locale
         buildMenu();
     }
@@ -68,7 +67,7 @@ public class ReportMenu extends SimpleMenu {
     }
     
     private void createCategoryItem(String categoryName, String actionHandler) {
-        LocaleManager.ReportCategory category = locale.getReportCategory(categoryName, targetPlayer);
+        LocaleManager.ReportCategory category = locale.getReportCategory(categoryName, villain.username());
         
         List<ChatElement<?>> lore = category.getLore().stream()
             .map(ChatElement::ofLegacyText)
@@ -86,43 +85,43 @@ public class ReportMenu extends SimpleMenu {
     protected void registerActionHandlers() {
         registerActionHandler("chat_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("chat_violation", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("chat_violation", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("username_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("username", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("username", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("skin_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("skin", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("skin", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("content_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("content", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("content", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("team_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("team_griefing", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("team_griefing", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("game_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("game_rules", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("game_rules", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
         registerActionHandler("cheating_report", click -> {
             click.clickedMenu().close();
-            LocaleManager.ReportCategory category = locale.getReportCategory("cheating", targetPlayer);
+            LocaleManager.ReportCategory category = locale.getReportCategory("cheating", villain.username());
             submitReport(category.getReportType(), category.getSubject());
         });
         
@@ -132,25 +131,18 @@ public class ReportMenu extends SimpleMenu {
     }
     
     private void submitReport(String type, String subject) {
-        String senderUuid = getSenderUuid();
-        String senderName = getSenderName();
         
         CreateTicketRequest request = new CreateTicketRequest(
-            senderUuid,                                         // creatorUuid
-            senderName,                                         // creatorName
+            hero.uuid().toString(),                                         // creatorUuid
+            hero.username(),                                         // creatorName
             type,                                               // type
-            subject + ": " + targetPlayer,                     // subject
-            reason != null ? reason : locale.getMessage("messages.no_details", Map.of()), // description
-            "unknown-uuid",                                     // reportedPlayerUuid
-            targetPlayer,                                       // reportedPlayerName
-            null,                                              // chatMessages
-            createReportFormData(type),                        // formData
-            Arrays.asList(
-                locale.getMessage("tags.player_report"),
-                locale.getMessage("tags.minecraft"),
-                type
-            ), // tags
-            locale.getPriority(type)                           // priority
+            subject + ": " + villain.username(),                     // subject
+            data != null ? data : locale.getMessage("messages.no_details", Map.of()), // description
+            villain.uuid().toString(),                                     // reportedPlayerUuid
+            villain.username(),                                       // reportedPlayerName
+            null,                                              // TODO: chatMessages
+            List.of(), // tags
+            "normal"                           // priority
         );
         
         sendMessage(locale.getMessage("messages.submitting", Map.of("type", "report")));
@@ -162,7 +154,7 @@ public class ReportMenu extends SimpleMenu {
                 sendMessage(locale.getMessage("messages.success", Map.of("type", "Report")));
                 sendMessage(locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
                 
-                String ticketUrl = panelUrl + "/tickets/" + response.getTicketId();
+                String ticketUrl = Constants.PANEL_URL + "/tickets/" + response.getTicketId();
                 sendMessage(locale.getMessage("messages.view_ticket", Map.of("url", ticketUrl)));
                 sendMessage(locale.getMessage("messages.evidence_note"));
             } else {
@@ -174,33 +166,9 @@ public class ReportMenu extends SimpleMenu {
             return null;
         });
     }
-    
-    private JsonObject createReportFormData(String reportType) {
-        JsonObject formData = new JsonObject();
-        formData.addProperty("reportType", reportType);
-        formData.addProperty("reportedPlayer", targetPlayer);
-        formData.addProperty("reason", reason);
-        formData.addProperty("reporterName", getSenderName());
-        formData.addProperty("reporterUuid", getSenderUuid());
-        formData.addProperty("server", locale.getMessage("form_data.server_name"));
-        return formData;
-    }
-    
-    private String getSenderUuid() {
-        if (reporter.getUniqueId() != null) {
-            return reporter.getUniqueId().toString();
-        }
-        return UUID.randomUUID().toString();
-    }
-    
-    private String getSenderName() {
-        if (reporter.getIssuer() != null) {
-            return reporter.getIssuer().toString();
-        }
-        return "Unknown";
-    }
-    
+
+
     private void sendMessage(String message) {
-        reporter.sendMessage(message);
+        platform.sendMessage(hero.uuid(), message);
     }
 }

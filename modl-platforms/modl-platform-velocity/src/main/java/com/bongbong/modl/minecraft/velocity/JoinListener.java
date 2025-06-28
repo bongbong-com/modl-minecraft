@@ -5,31 +5,28 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
-import com.bongbong.modl.minecraft.core.cache.PunishmentCache;
+import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.slf4j.Logger;
 
-import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 
+@RequiredArgsConstructor
 public class JoinListener {
 
-    private final VelocityPlatform platform;
-    private final PunishmentCache punishmentCache;
-
-    public JoinListener(VelocityPlatform platform) {
-        this.platform = platform;
-        this.punishmentCache = new PunishmentCache();
-    }
+    private final ModlHttpClient httpClient;
+    private final Cache cache;
+    private final Logger logger;
 
     @Subscribe
     public void onLogin(LoginEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
@@ -49,13 +46,13 @@ public class JoinListener {
             } else {
                 // Cache active mute if present
                 if (response.hasActiveMute()) {
-                    punishmentCache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                    cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
                 }
                 event.setResult(ResultedEvent.ComponentResult.allowed());
             }
         }).exceptionally(throwable -> {
             // On error, allow login but log warning
-            platform.getLogger().error("Failed to check punishments for " + event.getPlayer().getUsername(), throwable);
+            logger.error("Failed to check punishments for " + event.getPlayer().getUsername(), throwable);
             event.setResult(ResultedEvent.ComponentResult.allowed());
             return null;
         });
@@ -68,13 +65,12 @@ public class JoinListener {
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
         httpClient.playerDisconnect(request);
         
         // Remove player from punishment cache
-        punishmentCache.removePlayer(event.getPlayer().getUniqueId());
+        cache.removePlayer(event.getPlayer().getUniqueId());
     }
     
     private Component formatBanMessage(Punishment ban) {
@@ -97,7 +93,7 @@ public class JoinListener {
         return message;
     }
     
-    public PunishmentCache getPunishmentCache() {
-        return punishmentCache;
+    public Cache getPunishmentCache() {
+        return cache;
     }
 }
