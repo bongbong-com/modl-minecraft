@@ -127,6 +127,12 @@ public class ModlHttpClientImpl implements ModlHttpClient {
 
     @NotNull
     @Override
+    public CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request) {
+        return null;
+    }
+
+    @NotNull
+    @Override
     public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
         return null;
     }

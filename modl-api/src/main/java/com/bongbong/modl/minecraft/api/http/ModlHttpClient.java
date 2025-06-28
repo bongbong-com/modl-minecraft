@@ -41,5 +41,8 @@ public interface ModlHttpClient {
     CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request);
 
     @NotNull
+    CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request);
+
+    @NotNull
     CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request);
 }

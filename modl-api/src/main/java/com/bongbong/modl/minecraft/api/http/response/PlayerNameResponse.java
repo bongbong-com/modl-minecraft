@@ -4,7 +4,7 @@ import com.bongbong.modl.minecraft.api.Account;
 import lombok.Data;
 
 @Data
-public class PlayerGetResponse {
+public class PlayerNameResponse {
     private final int status;
     private final String message;
     private final Account player; // This would be a proper Player DTO in a real implementation

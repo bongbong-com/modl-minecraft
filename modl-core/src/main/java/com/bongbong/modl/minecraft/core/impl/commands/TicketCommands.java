@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.core.impl.commands;
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
+import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.CreateTicketRequest;
 import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
@@ -22,6 +23,8 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class TicketCommands extends BaseCommand {
     private final Platform platform;
+
+
     private final ModlHttpClient httpClient;
     private final String panelUrl; // e.g., "https://myserver.modl.gg"
     private final LocaleManager locale;
@@ -30,16 +33,16 @@ public class TicketCommands extends BaseCommand {
     @CommandPermission("modl.report")
     @Description("Report a player - opens a GUI with customizable options")
     @Syntax("<player> [reason]")
-    public void report(CommandIssuer sender, String targetPlayer, @Optional String reason) {
-        String senderName = getSenderName(sender);
+    public void report(CommandIssuer sender, AbstractPlayer targetPlayer, @Optional String reason) {
+        AbstractPlayer hero = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
-        if (targetPlayer.equalsIgnoreCase(senderName)) {
+        if (targetPlayer.username().equalsIgnoreCase(hero.username())) {
             sendMessage(sender, locale.getMessage("messages.cannot_report_self"));
             return;
         }
-        
+
         // Open the report GUI
-        ReportMenu reportMenu = new ReportMenu(sender, targetPlayer, reason, httpClient, panelUrl, locale);
+        ReportMenu reportMenu = new ReportMenu(platform.getAbstractPlayer(sender.getUniqueId(), false), targetPlayer, reason, httpClient, locale, platform);
         reportMenu.display(sender.getIssuer());
     }
     
@@ -47,40 +50,27 @@ public class TicketCommands extends BaseCommand {
     @CommandPermission("modl.chatreport")
     @Description("Report a player for inappropriate chat and save chat logs")
     @Syntax("<player> [reason]")
-    public void chatReport(CommandIssuer sender, String targetPlayer, @Optional String reason) {
-        String senderUuid = getSenderUuid(sender);
-        String senderName = getSenderName(sender);
+    public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer, @Optional String reason) {
+        AbstractPlayer hero = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
-        if (targetPlayer.equalsIgnoreCase(senderName)) {
+        if (targetPlayer.username().equalsIgnoreCase(hero.username())) {
             sendMessage(sender, locale.getMessage("messages.cannot_report_self"));
             return;
         }
-
         
         // TODO: Save recent chat logs for the target player
-        List<String> chatLogs = getChatLogs(targetPlayer);
-        
-        JsonObject formData = new JsonObject();
-        formData.addProperty("reportedPlayer", targetPlayer);
-        formData.addProperty("reason", reason != null ? reason : locale.getMessage("chat_logs.auto_reason"));
-        formData.addProperty("server", locale.getMessage("form_data.server_name"));
-        formData.addProperty("automaticChatLog", locale.getInteger("form_data.automatic_chat_log", 1) == 1);
-        
+        List<String> chatLogs = null;
+
         CreateTicketRequest request = new CreateTicketRequest(
-            senderUuid,                                         // creatorUuid
-            senderName,                                         // creatorName
+            hero.uuid().toString(),                                         // creatorUuid
+            hero.username(),                                         // creatorName
             "chat",                                            // type
-            locale.getMessage("report_gui.categories.chat_violation.subject", Map.of("player", targetPlayer)), // subject
+            locale.getMessage("report_gui.categories.chat_violation.subject", Map.of("player", targetPlayer.username())), // subject
             "Chat report: " + (reason != null ? reason : locale.getMessage("chat_logs.auto_reason")), // description
             "unknown-uuid",                                    // reportedPlayerUuid
-            targetPlayer,                                      // reportedPlayerName
+            targetPlayer.username(),                                      // reportedPlayerName
             chatLogs,                                          // chatMessages
-            formData,                                          // formData
-            Arrays.asList(
-                locale.getMessage("tags.chat_report"),
-                locale.getMessage("tags.minecraft"), 
-                locale.getMessage("tags.auto_logs")
-            ), // tags
+            List.of(), // tags
             locale.getPriority("chat")                         // priority
         );
         
@@ -92,19 +82,17 @@ public class TicketCommands extends BaseCommand {
     @Description("Report a bug - creates an unfinished report with a form link")
     @Syntax("<title>")
     public void bugReport(CommandIssuer sender, String title) {
-        String senderUuid = getSenderUuid(sender);
-        String senderName = getSenderName(sender);
-        
+        AbstractPlayer hero = platform.getAbstractPlayer(sender.getUniqueId(), false);
+
         CreateTicketRequest request = new CreateTicketRequest(
-            senderUuid,                                         // creatorUuid
-            senderName,                                         // creatorName
+                hero.uuid().toString(),                                         // creatorUuid
+                hero.username(),                                         // creatorName
             "bug",                                             // type
-            senderName + ": " + title, // subject
+                hero.username() + ": " + title, // subject
             null,                                              // description (filled in form)
             null,                                              // reportedPlayerUuid
             null,                                              // reportedPlayerName
             null,                                              // chatMessages
-            null,                                              // formData (filled in form)
             List.of(), // tags
             "normal"                          // priority
         );
@@ -117,19 +105,17 @@ public class TicketCommands extends BaseCommand {
     @Description("Request support - creates an unfinished request with a form link")
     @Syntax("<title>")
     public void supportRequest(CommandIssuer sender, String title) {
-        String senderUuid = getSenderUuid(sender);
-        String senderName = getSenderName(sender);
+        AbstractPlayer hero = platform.getAbstractPlayer(sender.getUniqueId(), false);
         
         CreateTicketRequest request = new CreateTicketRequest(
-            senderUuid,                                         // creatorUuid
-            senderName,                                         // creatorName
+            hero.uuid().toString(),                                         // creatorUuid
+            hero.username(),                                         // creatorName
             "support",                                          // type
-            senderName + ": " + title, // subject
+            hero.username() + ": " + title, // subject
             null,                                              // description (filled in form)
             null,                                              // reportedPlayerUuid
             null,                                              // reportedPlayerName
             null,                                              // chatMessages
-            null,                                              // formData (filled in form)
             List.of(), // tags
             "normal"                     // priority
         );
@@ -182,35 +168,8 @@ public class TicketCommands extends BaseCommand {
             return null;
         });
     }
-    
-    private List<String> getChatLogs(String targetPlayer) {
-        // TODO: Implement chat log retrieval system
-        // This should integrate with your chat logging system
-        // For now, return a placeholder
-        return Arrays.asList(
-            "[" + getCurrentTime() + "] " + targetPlayer + ": " + locale.getMessage("chat_logs.placeholder"),
-            "[" + getCurrentTime() + "] System: " + locale.getMessage("chat_logs.system_note")
-        );
-    }
-    
-    private String getCurrentTime() {
-        return java.time.LocalTime.now().toString().substring(0, 8);
-    }
-    
-    private String getSenderUuid(CommandIssuer sender) {
-        if (sender.getUniqueId() != null) {
-            return sender.getUniqueId().toString();
-        }
-        return UUID.randomUUID().toString();
-    }
-    
-    private String getSenderName(CommandIssuer sender) {
-        if (sender.getIssuer() != null) {
-            return sender.getIssuer().toString();
-        }
-        return "Unknown";
-    }
-    
+
+
     private void sendMessage(CommandIssuer sender, String message) {
         sender.sendMessage(message);
     }
