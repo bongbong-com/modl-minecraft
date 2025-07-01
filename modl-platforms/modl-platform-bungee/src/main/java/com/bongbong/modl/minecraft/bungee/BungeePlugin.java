@@ -29,8 +29,8 @@ public class BungeePlugin extends Plugin {
         new CirrusBungee(this).init();
 
         BungeePlatform platform = new BungeePlatform(commandManager, getLogger());
-        new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath());
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform));
+        PluginLoader loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath());
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient()));
     }
 
     @Override

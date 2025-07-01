@@ -6,6 +6,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -17,19 +18,15 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.concurrent.CompletableFuture;
 
+@RequiredArgsConstructor
 public class SpigotListener implements Listener {
 
     private final SpigotPlatform platform;
     private final Cache cache;
-
-    public SpigotListener(SpigotPlatform platform) {
-        this.platform = platform;
-        this.cache = new Cache();
-    }
+    private final ModlHttpClient httpClient;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
@@ -58,7 +55,6 @@ public class SpigotListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         // Cache mute status after successful join
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
@@ -79,7 +75,6 @@ public class SpigotListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
         httpClient.playerDisconnect(request);

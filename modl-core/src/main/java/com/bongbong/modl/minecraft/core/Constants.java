@@ -15,7 +15,7 @@ public interface Constants {
             Colors.translate("&cNo player with that username exists (queried Mojang API)") :
             Colors.translate("&cNo player with that username has never joined the server.");
 
-    String API_KEY = "";
-    String API_URL = "";
-    String PANEL_URL = "";
+    String API_KEY = "FhsxKUuaI2PdGN3mvHIEsVRJCcviNMiruFljfnkmZLk";
+    String API_URL = "http://123.cobl.gg/api";
+    String PANEL_URL = "https://123.cobl.gg";
 }

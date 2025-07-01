@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.velocity;
 import co.aikar.commands.VelocityCommandManager;
 import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.PluginLoader;
+import com.bongbong.modl.minecraft.core.plugin.PluginInfo;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -11,8 +12,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.simplix.cirrus.velocity.CirrusVelocity;
-import lombok.Getter;
+//import dev.simplix.cirrus.velocity.CirrusVelocity;
 import org.slf4j.Logger;
 
 import javax.inject.Inject;
@@ -26,7 +26,6 @@ import java.util.Map;
         description = PluginInfo.DESCRIPTION,
         url = PluginInfo.URL,
         dependencies = @Dependency(id = "protocolize"))
-@Getter
 public final class VelocityPlugin {
 
     private final PluginContainer plugin;
@@ -46,12 +45,12 @@ public final class VelocityPlugin {
     @Subscribe
     public synchronized void onProxyInitialize(ProxyInitializeEvent evt) {
         VelocityCommandManager commandManager = new VelocityCommandManager(this.server, this);
-        new CirrusVelocity(this, server, server.getCommandManager()).init();
+//        new CirrusVelocity(this, server, server.getCommandManager()).init();
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
         PluginLoader loader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
 
-        server.getEventManager().register(this, new JoinListener(loader.getHttpClient(), loader.getCache(), getLogger()));
+        server.getEventManager().register(this, new JoinListener(loader.getHttpClient(), loader.getCache(), logger));
         server.getEventManager().register(this, new ChatListener(platform, loader.getCache()));
     }
 

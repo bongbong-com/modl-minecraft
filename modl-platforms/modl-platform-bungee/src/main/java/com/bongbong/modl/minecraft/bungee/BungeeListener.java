@@ -6,6 +6,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -19,19 +20,15 @@ import net.md_5.bungee.event.EventPriority;
 
 import java.util.concurrent.CompletableFuture;
 
+@RequiredArgsConstructor
 public class BungeeListener implements Listener {
 
     private final BungeePlatform platform;
     private final Cache cache;
-
-    public BungeeListener(BungeePlatform platform) {
-        this.platform = platform;
-        this.cache = new Cache();
-    }
+    private final ModlHttpClient httpClient;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
@@ -60,7 +57,6 @@ public class BungeeListener implements Listener {
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
         // Cache mute status after successful join
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
@@ -81,7 +77,6 @@ public class BungeeListener implements Listener {
 
     @EventHandler
     public void onPlayerDisconnect(PlayerDisconnectEvent event) {
-        ModlHttpClient httpClient = platform.getHttpClient();
         PlayerDisconnectRequest request = new PlayerDisconnectRequest(event.getPlayer().getUniqueId().toString());
 
         httpClient.playerDisconnect(request);

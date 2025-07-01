@@ -8,7 +8,6 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerGetRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
-import com.bongbong.modl.minecraft.core.impl.commands.BanCommand;
 import lombok.Getter;
 
 import java.nio.file.Path;
@@ -38,8 +37,8 @@ public class PluginLoader {
                 -> fetchPlayer(c.popFirstArg(), platform, httpClient));
 
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
-
-        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
+//
+//        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient) {
@@ -49,7 +48,7 @@ public class PluginLoader {
         Account account = httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
 
         if (account != null)
-            return new AbstractPlayer(account.getMinecraftUuid(), account.getUsernames().getLast().getUsername(), false);
+            return new AbstractPlayer(account.getMinecraftUuid(), "test", false);
 
         if (account == null && QUERY_MOJANG)
             return platform.getAbstractPlayer(target, true);

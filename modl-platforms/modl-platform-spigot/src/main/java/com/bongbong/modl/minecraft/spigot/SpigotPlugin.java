@@ -20,8 +20,8 @@ public class SpigotPlugin extends JavaPlugin {
         new CirrusSpigot(this).init();
 
         SpigotPlatform platform = new SpigotPlatform(commandManager, getLogger());
-        new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath());
-        getServer().getPluginManager().registerEvents(new SpigotListener(platform), this);
+        PluginLoader loader = new PluginLoader(platform, new SpigotCommandRegister(commandManager), getDataFolder().toPath());
+        getServer().getPluginManager().registerEvents(new SpigotListener(platform, loader.getCache(), loader.getHttpClient()), this);
     }
 
     @Override
