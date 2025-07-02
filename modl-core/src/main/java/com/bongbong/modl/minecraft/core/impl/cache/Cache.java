@@ -79,6 +79,13 @@ public class Cache {
         return cache.size();
     }
     
+    /**
+     * Get the internal cache map (for platform-specific access)
+     */
+    public Map<UUID, CachedPlayerData> getCache() {
+        return cache;
+    }
+    
     @Getter
     @Setter
     public static class CachedPlayerData {

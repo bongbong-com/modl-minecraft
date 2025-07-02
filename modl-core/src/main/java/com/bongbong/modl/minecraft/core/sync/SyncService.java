@@ -10,6 +10,7 @@ import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import com.bongbong.modl.minecraft.core.Constants;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
@@ -340,9 +341,9 @@ public class SyncService {
             // Add to cache for immediate effect
             cache.cacheMute(uuid, punishment);
             
-            // Broadcast (SimplePunishment doesn't have silent flag, so always broadcast)
-            String duration = punishment.getFormattedDuration();
-            platform.broadcast(String.format("§c%s has been muted %s: §f%s", username, duration, punishment.getDescription()));
+            // Broadcast punishment
+            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted");
+            platform.broadcast(broadcastMessage);
             
             logger.info(String.format("Successfully executed mute for %s: %s", username, punishment.getDescription()));
             return true;
@@ -364,9 +365,9 @@ public class SyncService {
                 platform.kickPlayer(player, kickMsg);
             }
             
-            // Broadcast
-            String duration = punishment.getFormattedDuration();
-            platform.broadcast(String.format("§c%s has been banned %s: §f%s", username, duration, punishment.getDescription()));
+            // Broadcast punishment
+            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned");
+            platform.broadcast(broadcastMessage);
             
             logger.info(String.format("Successfully executed ban for %s: %s", username, punishment.getDescription()));
             return true;

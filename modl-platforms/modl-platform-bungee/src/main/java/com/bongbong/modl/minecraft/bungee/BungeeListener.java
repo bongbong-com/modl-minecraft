@@ -1,11 +1,14 @@
 package com.bongbong.modl.minecraft.bungee;
 
 import com.bongbong.modl.minecraft.api.Punishment;
+import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
+import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -37,21 +40,27 @@ public class BungeeListener implements Listener {
                 null
         );
 
-        // Check for active punishments and prevent login if banned
-        CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
-        
-        loginFuture.thenAccept(response -> {
+        try {
+            // Check for active punishments and prevent login if banned (synchronous)
+            CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
+            PlayerLoginResponse response = loginFuture.join(); // Block until response
+            
             if (response.hasActiveBan()) {
-                Punishment ban = response.getActiveBan();
-                TextComponent kickMessage = new TextComponent(formatBanMessage(ban));
+                SimplePunishment ban = response.getActiveBan();
+                String banText = PunishmentMessages.formatBanMessage(ban);
+                TextComponent kickMessage = new TextComponent(banText);
                 event.setCancelReason(kickMessage);
                 event.setCancelled(true);
+                
+                // Acknowledge ban enforcement if it wasn't started yet
+                if (!ban.isStarted()) {
+                    acknowledgeBanEnforcement(ban, event.getConnection().getUniqueId().toString());
+                }
             }
-        }).exceptionally(throwable -> {
+        } catch (Exception e) {
             // On error, allow login but log warning
-            platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + throwable.getMessage());
-            return null;
-        });
+            platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
+        }
     }
 
     @EventHandler
@@ -94,36 +103,29 @@ public class BungeeListener implements Listener {
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
         
         if (cache.isMuted(sender.getUniqueId())) {
-            Punishment mute = cache.getMute(sender.getUniqueId());
+            // Cancel the chat event
+            event.setCancelled(true);
             
-            if (mute != null) {
-                // Cancel the chat event
-                event.setCancelled(true);
-                
-                // Send mute message to player
-                String muteMessage = formatMuteMessage(mute);
+            // Get cached mute and send message to player
+            Cache.CachedPlayerData data = cache.getCache().get(sender.getUniqueId());
+            if (data != null) {
+                String muteMessage;
+                if (data.getSimpleMute() != null) {
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute());
+                } else if (data.getMute() != null) {
+                    // Fallback to old punishment format
+                    muteMessage = formatMuteMessage(data.getMute());
+                } else {
+                    muteMessage = "§cYou are muted!";
+                }
                 sender.sendMessage(new TextComponent(muteMessage));
             }
         }
     }
     
-    private String formatBanMessage(Punishment ban) {
-        String reason = ban.getReason() != null ? ban.getReason() : "No reason provided";
-        
-        StringBuilder message = new StringBuilder();
-        message.append(ChatColor.RED).append("You are banned from this server!\n");
-        message.append(ChatColor.GRAY).append("Reason: ").append(ChatColor.WHITE).append(reason);
-        
-        if (ban.getExpires() != null) {
-            message.append("\n").append(ChatColor.GRAY).append("Expires: ")
-                   .append(ChatColor.WHITE).append(ban.getExpires().toString());
-        } else {
-            message.append("\n").append(ChatColor.DARK_RED).append("This ban is permanent.");
-        }
-        
-        return message.toString();
-    }
-    
+    /**
+     * Format mute message for old punishment format (fallback)
+     */
     private String formatMuteMessage(Punishment mute) {
         String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
         
@@ -134,7 +136,7 @@ public class BungeeListener implements Listener {
         if (mute.getExpires() != null) {
             long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
             if (timeLeft > 0) {
-                String timeString = formatTime(timeLeft);
+                String timeString = PunishmentMessages.formatDuration(timeLeft);
                 message.append("\n").append(ChatColor.GRAY).append("Time remaining: ")
                        .append(ChatColor.WHITE).append(timeString);
             }
@@ -145,24 +147,31 @@ public class BungeeListener implements Listener {
         return message.toString();
     }
     
-    private String formatTime(long milliseconds) {
-        long seconds = milliseconds / 1000;
-        long minutes = seconds / 60;
-        long hours = minutes / 60;
-        long days = hours / 24;
-        
-        if (days > 0) {
-            return String.format("%dd %dh %dm", days, hours % 24, minutes % 60);
-        } else if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
-        } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
-        } else {
-            return String.format("%ds", seconds);
-        }
-    }
-    
     public Cache getPunishmentCache() {
         return cache;
+    }
+    
+    /**
+     * Acknowledge that a ban was successfully enforced (player denied login)
+     */
+    private void acknowledgeBanEnforcement(SimplePunishment ban, String playerUuid) {
+        try {
+            PunishmentAcknowledgeRequest request = new PunishmentAcknowledgeRequest(
+                    ban.getId(),
+                    playerUuid,
+                    java.time.Instant.now().toString(),
+                    true, // success
+                    null // no error message
+            );
+            
+            httpClient.acknowledgePunishment(request).thenAccept(response -> {
+                platform.getLogger().info("Successfully acknowledged ban enforcement for punishment " + ban.getId());
+            }).exceptionally(throwable -> {
+                platform.getLogger().severe("Failed to acknowledge ban enforcement for punishment " + ban.getId() + ": " + throwable.getMessage());
+                return null;
+            });
+        } catch (Exception e) {
+            platform.getLogger().severe("Error acknowledging ban enforcement for punishment " + ban.getId() + ": " + e.getMessage());
+        }
     }
 }
