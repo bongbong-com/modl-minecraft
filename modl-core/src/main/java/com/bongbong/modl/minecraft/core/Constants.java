@@ -16,6 +16,9 @@ public interface Constants {
             Colors.translate("&cNo player with that username has never joined the server.");
 
     String API_KEY = "FhsxKUuaI2PdGN3mvHIEsVRJCcviNMiruFljfnkmZLk";
-    String API_URL = "http://123.cobl.gg/api";
+    String API_URL = "https://123.cobl.gg/api/minecraft";
     String PANEL_URL = "https://123.cobl.gg";
+    
+    // Debug mode for HTTP requests - enabled by default for troubleshooting
+    boolean DEBUG_HTTP = Boolean.parseBoolean(System.getProperty("modl.debug.http", "true"));
 }

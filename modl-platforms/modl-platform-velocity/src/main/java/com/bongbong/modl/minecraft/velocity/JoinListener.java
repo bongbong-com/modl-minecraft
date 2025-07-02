@@ -1,6 +1,7 @@
 package com.bongbong.modl.minecraft.velocity;
 
 import com.bongbong.modl.minecraft.api.Punishment;
+import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
@@ -39,20 +40,34 @@ public class JoinListener {
         CompletableFuture<PlayerLoginResponse> loginFuture = httpClient.playerLogin(request);
         
         loginFuture.thenAccept(response -> {
+            logger.info(String.format("Login response for %s: hasBan=%s, hasMute=%s", 
+                    event.getPlayer().getUsername(),
+                    response.hasActiveBan(),
+                    response.hasActiveMute()));
+            
             if (response.hasActiveBan()) {
-                Punishment ban = response.getActiveBan();
+                SimplePunishment ban = response.getActiveBan();
                 Component kickMessage = formatBanMessage(ban);
                 event.setResult(ResultedEvent.ComponentResult.denied(kickMessage));
+                
+                logger.info(String.format("Denied login for %s due to active ban: %s", 
+                        event.getPlayer().getUsername(), ban.getDescription()));
             } else {
                 // Cache active mute if present
                 if (response.hasActiveMute()) {
-                    cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
+                    SimplePunishment mute = response.getActiveMute();
+                    cache.cacheMute(event.getPlayer().getUniqueId(), mute);
+                    logger.info(String.format("Cached active mute for %s: %s", 
+                            event.getPlayer().getUsername(), mute.getDescription()));
                 }
                 event.setResult(ResultedEvent.ComponentResult.allowed());
+                
+                logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
             }
         }).exceptionally(throwable -> {
             // On error, allow login but log warning
-            logger.error("Failed to check punishments for " + event.getPlayer().getUsername(), throwable);
+            logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + 
+                        " - allowing login as fallback", throwable);
             event.setResult(ResultedEvent.ComponentResult.allowed());
             return null;
         });
@@ -73,22 +88,38 @@ public class JoinListener {
         cache.removePlayer(event.getPlayer().getUniqueId());
     }
     
-    private Component formatBanMessage(Punishment ban) {
-        String reason = ban.getReason() != null ? ban.getReason() : "No reason provided";
-        
+    private Component formatBanMessage(SimplePunishment ban) {
         Component message = Component.text("You are banned from this server!", NamedTextColor.RED)
                 .append(Component.newline())
                 .append(Component.text("Reason: ", NamedTextColor.GRAY))
-                .append(Component.text(reason, NamedTextColor.WHITE));
+                .append(Component.text(ban.getDescription(), NamedTextColor.WHITE));
         
-        if (ban.getExpires() != null) {
-            message = message.append(Component.newline())
-                    .append(Component.text("Expires: ", NamedTextColor.GRAY))
-                    .append(Component.text(ban.getExpires().toString(), NamedTextColor.WHITE));
-        } else {
+        // Add punishment ID for reference
+        message = message.append(Component.newline())
+                .append(Component.text("Ban ID: ", NamedTextColor.GRAY))
+                .append(Component.text(ban.getId(), NamedTextColor.YELLOW));
+        
+        // Add expiration information with formatted duration
+        if (ban.isPermanent()) {
             message = message.append(Component.newline())
                     .append(Component.text("This ban is permanent.", NamedTextColor.DARK_RED));
+        } else if (ban.isExpired()) {
+            message = message.append(Component.newline())
+                    .append(Component.text("This ban has expired (contact staff).", NamedTextColor.GREEN));
+        } else {
+            message = message.append(Component.newline())
+                    .append(Component.text("Expires in: ", NamedTextColor.GRAY))
+                    .append(Component.text(ban.getFormattedDuration(), NamedTextColor.WHITE))
+                    .append(Component.newline())
+                    .append(Component.text("Expires: ", NamedTextColor.GRAY))
+                    .append(Component.text(ban.getExpiration().toString(), NamedTextColor.WHITE));
         }
+        
+        // Add appeal information
+        message = message.append(Component.newline())
+                .append(Component.newline())
+                .append(Component.text("Appeal at: ", NamedTextColor.GRAY))
+                .append(Component.text("https://123.cobl.gg/appeal", NamedTextColor.BLUE));
         
         return message;
     }

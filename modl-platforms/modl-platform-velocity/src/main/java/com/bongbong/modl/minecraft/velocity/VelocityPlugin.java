@@ -33,6 +33,7 @@ public final class VelocityPlugin {
     private final Path folder;
     private final Logger logger;
     private Map<String, Object> configuration;
+    private PluginLoader pluginLoader;
 
     @Inject
     public VelocityPlugin(PluginContainer plugin, ProxyServer server, @DataDirectory Path folder, Logger logger) {
@@ -48,15 +49,17 @@ public final class VelocityPlugin {
 //        new CirrusVelocity(this, server, server.getCommandManager()).init();
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
-        PluginLoader loader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
+        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
 
-        server.getEventManager().register(this, new JoinListener(loader.getHttpClient(), loader.getCache(), logger));
-        server.getEventManager().register(this, new ChatListener(platform, loader.getCache()));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger));
+        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache()));
     }
 
     @Subscribe
     public synchronized void onProxyShutdown(ProxyShutdownEvent evt) {
-
+        if (pluginLoader != null) {
+            pluginLoader.shutdown();
+        }
     }
 
 }

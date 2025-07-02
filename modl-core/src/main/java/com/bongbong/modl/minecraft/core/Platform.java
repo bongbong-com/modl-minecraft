@@ -7,6 +7,7 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.UUID;
 
 public interface Platform {
@@ -19,5 +20,13 @@ public interface Platform {
     AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang);
     AbstractPlayer getAbstractPlayer(String username, boolean queryMojang);
     CirrusPlayerWrapper getPlayerWrapper(UUID uuid);
+    
+    // New methods for sync service
+    Collection<AbstractPlayer> getOnlinePlayers();
+    AbstractPlayer getPlayer(UUID uuid);
+    int getMaxPlayers();
+    String getServerVersion();
+    void runOnMainThread(Runnable task);
+    void kickPlayer(AbstractPlayer player, String reason);
 }
 

@@ -10,6 +10,8 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -64,6 +66,36 @@ public class BungeePlatform implements Platform {
     @Override
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
         return null;
+    }
+
+    @Override
+    public Collection<AbstractPlayer> getOnlinePlayers() {
+        return List.of();
+    }
+
+    @Override
+    public AbstractPlayer getPlayer(UUID uuid) {
+        return null;
+    }
+
+    @Override
+    public int getMaxPlayers() {
+        return 0;
+    }
+
+    @Override
+    public String getServerVersion() {
+        return "";
+    }
+
+    @Override
+    public void runOnMainThread(Runnable task) {
+
+    }
+
+    @Override
+    public void kickPlayer(AbstractPlayer player, String reason) {
+
     }
 
     public Logger getLogger() {

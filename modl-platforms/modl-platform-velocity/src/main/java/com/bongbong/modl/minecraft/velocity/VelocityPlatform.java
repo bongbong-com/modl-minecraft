@@ -3,9 +3,7 @@ package com.bongbong.modl.minecraft.velocity;
 import co.aikar.commands.CommandManager;
 import co.aikar.commands.VelocityCommandManager;
 import com.bongbong.modl.minecraft.api.AbstractPlayer;
-import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.core.Constants;
-import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.util.WebPlayer;
 import com.velocitypowered.api.proxy.Player;
@@ -15,13 +13,11 @@ import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.Collection;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class VelocityPlatform implements Platform {
@@ -64,17 +60,17 @@ public class VelocityPlatform implements Platform {
         return commandManager;
     }
 
-    private Player getPlayer(String username) {
+    private Player getOnlinePlayer(String username) {
         return server.getPlayer(username).isPresent() ? server.getPlayer(username).get() : null;
     }
 
-    private Player getPlayer(UUID uuid) {
+    private Player getOnlinePlayer(UUID uuid) {
         return server.getPlayer(uuid).isPresent() ? server.getPlayer(uuid).get() : null;
     }
 
     @Override
     public AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang) {
-        Player player = getPlayer(uuid);
+        Player player = getOnlinePlayer(uuid);
 
         if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true);
         if (!queryMojang) return null;
@@ -92,7 +88,7 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public AbstractPlayer getAbstractPlayer(String username, boolean queryMojang) {
-        Player player = getPlayer(username);
+        Player player = getOnlinePlayer(username);
 
         if (player != null) return new AbstractPlayer(player.getUniqueId(), player.getUsername(), true);
         if (!queryMojang) return null;
@@ -112,5 +108,55 @@ public class VelocityPlatform implements Platform {
     public CirrusPlayerWrapper getPlayerWrapper(UUID uuid) {
 //        return new VelocityPlayerWrapper(getPlayer(uuid));
         return null;
+    }
+
+    @Override
+    public Collection<AbstractPlayer> getOnlinePlayers() {
+        return server.getAllPlayers().stream()
+                .map(player -> new AbstractPlayer(
+                        player.getUniqueId(),
+                        player.getUsername(),
+                        true,
+                        player.getRemoteAddress().getAddress().getHostAddress()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public AbstractPlayer getPlayer(UUID uuid) {
+        Player player = server.getPlayer(uuid).orElse(null);
+        if (player == null) return null;
+        
+        return new AbstractPlayer(
+                player.getUniqueId(),
+                player.getUsername(),
+                true,
+                player.getRemoteAddress().getAddress().getHostAddress()
+        );
+    }
+
+    @Override
+    public int getMaxPlayers() {
+        return server.getConfiguration().getShowMaxPlayers();
+    }
+
+    @Override
+    public String getServerVersion() {
+        return server.getVersion().getVersion();
+    }
+
+    @Override
+    public void runOnMainThread(Runnable task) {
+        // Velocity doesn't have a main thread concept like Bukkit
+        // Execute immediately since we're already on the main event thread
+        task.run();
+    }
+
+    @Override
+    public void kickPlayer(AbstractPlayer player, String reason) {
+        Player velocityPlayer = server.getPlayer(player.getUuid()).orElse(null);
+        if (velocityPlayer != null) {
+            velocityPlayer.disconnect(get(reason));
+        }
     }
 }

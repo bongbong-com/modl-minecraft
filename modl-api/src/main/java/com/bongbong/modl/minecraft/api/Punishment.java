@@ -93,7 +93,39 @@ public class Punishment {
 
     @RequiredArgsConstructor
     public enum Type {
-        BAN,
-        MUTE
+        KICK(0),
+        MUTE(1),
+        BAN(2),
+        SECURITY_BAN(3),
+        LINKED_BAN(4),
+        BLACKLIST(5);
+        
+        private final int value;
+        
+        public int getValue() {
+            return value;
+        }
+        
+        public static Type fromValue(int value) {
+            for (Type type : values()) {
+                if (type.value == value) {
+                    return type;
+                }
+            }
+            return null;
+        }
+    }
+    
+    public Long getDuration() {
+        Object duration = dataMap.get("duration");
+        if (duration instanceof Number) {
+            return ((Number) duration).longValue();
+        }
+        return null;
+    }
+    
+    public boolean isSilent() {
+        Object silent = dataMap.get("silent");
+        return silent instanceof Boolean && (Boolean) silent;
     }
 }

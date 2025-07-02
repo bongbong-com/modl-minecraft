@@ -11,6 +11,6 @@ public class HttpManager {
     private final ModlHttpClient httpClient;
 
     public HttpManager(@NotNull String key, @NotNull String url) {
-        this.httpClient = new ModlHttpClientImpl(key, url);
+        this.httpClient = new ModlHttpClientImpl(url, key, Constants.DEBUG_HTTP);
     }
 }

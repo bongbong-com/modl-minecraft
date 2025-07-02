@@ -45,4 +45,11 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request);
+
+    // Sync and acknowledgment methods
+    @NotNull
+    CompletableFuture<SyncResponse> sync(@NotNull SyncRequest request);
+
+    @NotNull
+    CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request);
 }

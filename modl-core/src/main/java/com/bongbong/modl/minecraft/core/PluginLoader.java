@@ -8,10 +8,12 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerGetRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.sync.SyncService;
 import lombok.Getter;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 import static com.bongbong.modl.minecraft.core.Constants.QUERY_MOJANG;
 
@@ -19,6 +21,7 @@ import static com.bongbong.modl.minecraft.core.Constants.QUERY_MOJANG;
 public class PluginLoader {
     private final ModlHttpClient httpClient;
     private final Cache cache;
+    private final SyncService syncService;
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory) {
         cache = new Cache();
@@ -29,6 +32,20 @@ public class PluginLoader {
         );
 
         this.httpClient = httpManager.getHttpClient();
+
+        // Initialize sync service
+        Logger logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
+        this.syncService = new SyncService(platform, httpClient, cache, logger);
+        
+        // Log configuration details
+        logger.info("MODL Configuration:");
+        logger.info("  API URL: " + Constants.API_URL);
+        logger.info("  API Key: " + (Constants.API_KEY.length() > 8 ? 
+            Constants.API_KEY.substring(0, 8) + "..." : "***"));
+        logger.info("  Debug Mode: " + Constants.DEBUG_HTTP);
+        
+        // Start sync service
+        syncService.start();
 
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
@@ -58,5 +75,14 @@ public class PluginLoader {
 
     public static Account fetchPlayer(String target, ModlHttpClient httpClient) {
         return httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
+    }
+    
+    /**
+     * Stop all services (should be called on plugin disable)
+     */
+    public void shutdown() {
+        if (syncService != null) {
+            syncService.stop();
+        }
     }
 }

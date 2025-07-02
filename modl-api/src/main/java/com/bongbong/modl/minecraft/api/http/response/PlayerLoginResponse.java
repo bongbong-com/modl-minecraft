@@ -1,46 +1,38 @@
 package com.bongbong.modl.minecraft.api.http.response;
 
-import com.bongbong.modl.minecraft.api.Punishment;
+import com.bongbong.modl.minecraft.api.SimplePunishment;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class PlayerLoginResponse {
-    private final boolean success;
-    private final String message;
-    private final List<Punishment> activePunishments;
-    
-    public PlayerLoginResponse(boolean success, String message, List<Punishment> activePunishments) {
-        this.success = success;
-        this.message = message;
-        // Create defensive copy to ensure immutability
-        this.activePunishments = activePunishments != null ? 
-            Collections.unmodifiableList(new ArrayList<>(activePunishments)) : 
-            List.of();
-    }
+    private int status;
+    private List<SimplePunishment> activePunishments;
     
     public boolean hasActiveBan() {
-        return activePunishments.stream().anyMatch(p -> p.getType() == Punishment.Type.BAN);
+        return activePunishments != null && activePunishments.stream().anyMatch(SimplePunishment::isBan);
     }
     
     public boolean hasActiveMute() {
-        return activePunishments.stream().anyMatch(p -> p.getType() == Punishment.Type.MUTE);
+        return activePunishments != null && activePunishments.stream().anyMatch(SimplePunishment::isMute);
     }
     
-    public Punishment getActiveBan() {
-        return activePunishments.stream()
-            .filter(p -> p.getType() == Punishment.Type.BAN)
+    public SimplePunishment getActiveBan() {
+        return activePunishments != null ? activePunishments.stream()
+            .filter(SimplePunishment::isBan)
             .findFirst()
-            .orElse(null);
+            .orElse(null) : null;
     }
     
-    public Punishment getActiveMute() {
-        return activePunishments.stream()
-            .filter(p -> p.getType() == Punishment.Type.MUTE)
+    public SimplePunishment getActiveMute() {
+        return activePunishments != null ? activePunishments.stream()
+            .filter(SimplePunishment::isMute)
             .findFirst()
-            .orElse(null);
+            .orElse(null) : null;
     }
 }
