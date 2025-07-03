@@ -48,7 +48,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PlayerProfileResponse> getPlayerProfile(@NotNull UUID uuid) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/player/" + uuid))
+                .uri(URI.create(baseUrl + "/minecraft/player/" + uuid))
                 .header("X-API-Key", apiKey)
                 .build(), PlayerProfileResponse.class);
     }
@@ -57,7 +57,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<LinkedAccountsResponse> getLinkedAccounts(@NotNull UUID uuid) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/player/" + uuid + "/linked-accounts"))
+                .uri(URI.create(baseUrl + "/minecraft/player/" + uuid + "/linked-accounts"))
                 .header("X-API-Key", apiKey)
                 .build(), LinkedAccountsResponse.class);
     }
@@ -71,7 +71,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         }
         
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/player/login"))
+                .uri(URI.create(baseUrl + "/minecraft/player/login"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -82,7 +82,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> playerDisconnect(@NotNull PlayerDisconnectRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/player/disconnect"))
+                .uri(URI.create(baseUrl + "/minecraft/player/disconnect"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -93,7 +93,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<CreateTicketResponse> createTicket(@NotNull CreateTicketRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/public/tickets"))
+                .uri(URI.create(baseUrl + "/public/tickets"))
                 .header("X-Ticket-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -103,18 +103,27 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<CreateTicketResponse> createUnfinishedTicket(@NotNull CreateTicketRequest request) {
+        String requestBody = gson.toJson(request);
+        String url = baseUrl + "/public/tickets/unfinished";
+        
+        if (debugMode) {
+            logger.info(String.format("Create unfinished ticket request URL: %s", url));
+            logger.info(String.format("Create unfinished ticket request body: %s", requestBody));
+        }
+        
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/api/public/tickets/unfinished"))
+                .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
-                .build(), CreateTicketResponse.class);
+                .header("X-API-Key", apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build(), CreateTicketResponse.class, "CREATE_UNFINISHED_TICKET");
     }
 
     @NotNull
     @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/punishments"))
+                .uri(URI.create(baseUrl + "/minecraft/punishments"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -125,7 +134,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPlayerNote(@NotNull CreatePlayerNoteRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/player/" + request.getTargetUuid() + "/notes"))
+                .uri(URI.create(baseUrl + "/minecraft/player/" + request.getTargetUuid() + "/notes"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -165,7 +174,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
         }
         
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/sync"))
+                .uri(URI.create(baseUrl + "/minecraft/sync"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -176,7 +185,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/punishment/acknowledge"))
+                .uri(URI.create(baseUrl + "/minecraft/punishment/acknowledge"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))

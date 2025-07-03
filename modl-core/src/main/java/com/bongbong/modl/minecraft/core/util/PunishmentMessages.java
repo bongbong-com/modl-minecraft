@@ -74,8 +74,13 @@ public class PunishmentMessages {
      * Format a punishment for broadcast messages
      */
     public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action) {
-        assert punishment.getExpiration() != null;
-        String duration = formatDuration(punishment.getExpiration() - System.currentTimeMillis());
+        String duration;
+        if (punishment.isPermanent()) {
+            duration = "permanently";
+        } else {
+            assert punishment.getExpiration() != null;
+            duration = formatDuration(punishment.getExpiration() - System.currentTimeMillis());
+        }
         return String.format("§c%s has been %s %s: §f%s", username, action, duration, punishment.getDescription());
     }
     

@@ -8,6 +8,8 @@ import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerGetRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.impl.commands.TicketCommands;
+import com.bongbong.modl.minecraft.core.locale.LocaleManager;
 import com.bongbong.modl.minecraft.core.sync.SyncService;
 import lombok.Getter;
 
@@ -47,6 +49,8 @@ public class PluginLoader {
         // Start sync service
         syncService.start();
 
+        LocaleManager localeManager = new LocaleManager();
+
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
 
@@ -55,6 +59,7 @@ public class PluginLoader {
 
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
 //
+        commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager));
 //        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
     }
 

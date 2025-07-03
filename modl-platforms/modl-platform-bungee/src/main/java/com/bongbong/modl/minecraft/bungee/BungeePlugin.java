@@ -20,10 +20,6 @@ public class BungeePlugin extends Plugin {
     @Override
     public synchronized void onEnable() {
         loadConfig();
-        HttpManager httpManager = new HttpManager(
-                configuration.getString("api.key"),
-                configuration.getString("api.url")
-        );
 
         BungeeCommandManager commandManager = new BungeeCommandManager(this);
         new CirrusBungee(this).init();

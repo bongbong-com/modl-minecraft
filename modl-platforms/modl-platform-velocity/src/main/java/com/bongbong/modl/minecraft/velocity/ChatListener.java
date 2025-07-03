@@ -1,7 +1,9 @@
 package com.bongbong.modl.minecraft.velocity;
 
 import com.bongbong.modl.minecraft.api.Punishment;
+import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
 import net.kyori.adventure.text.Component;
@@ -20,57 +22,44 @@ public class ChatListener {
     @Subscribe
     public void onPlayerChat(PlayerChatEvent event) {
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
-            Punishment mute = cache.getMute(event.getPlayer().getUniqueId());
+            // Cancel the chat event
+            event.setResult(PlayerChatEvent.ChatResult.denied());
             
-            if (mute != null) {
-                // Cancel the chat event
-                event.setResult(PlayerChatEvent.ChatResult.denied());
-                
-                // Send mute message to player
-                Component muteMessage = formatMuteMessage(mute);
-                event.getPlayer().sendMessage(muteMessage);
+            // Get cached mute and send message to player
+            Cache.CachedPlayerData data = cache.getCache().get(event.getPlayer().getUniqueId());
+            if (data != null) {
+                String muteMessage;
+                if (data.getSimpleMute() != null) {
+                    muteMessage = PunishmentMessages.formatMuteMessage(data.getSimpleMute());
+                } else if (data.getMute() != null) {
+                    // Fallback to old punishment format
+                    muteMessage = formatMuteMessage(data.getMute());
+                } else {
+                    muteMessage = "§cYou are muted!";
+                }
+                Component muteComponent = Colors.get(muteMessage);
+                event.getPlayer().sendMessage(muteComponent);
             }
         }
     }
     
-    private Component formatMuteMessage(Punishment mute) {
+    private String formatMuteMessage(Punishment mute) {
         String reason = mute.getReason() != null ? mute.getReason() : "No reason provided";
         
-        Component message = Component.text("You are muted!", NamedTextColor.RED)
-                .append(Component.newline())
-                .append(Component.text("Reason: ", NamedTextColor.GRAY))
-                .append(Component.text(reason, NamedTextColor.WHITE));
+        StringBuilder message = new StringBuilder();
+        message.append("§cYou are muted!\n");
+        message.append("§7Reason: §f").append(reason).append("\n");
         
         if (mute.getExpires() != null) {
             long timeLeft = mute.getExpires().getTime() - System.currentTimeMillis();
             if (timeLeft > 0) {
-                String timeString = formatTime(timeLeft);
-                message = message.append(Component.newline())
-                        .append(Component.text("Time remaining: ", NamedTextColor.GRAY))
-                        .append(Component.text(timeString, NamedTextColor.WHITE));
+                String timeString = PunishmentMessages.formatDuration(timeLeft);
+                message.append("§7Time remaining: §f").append(timeString).append("\n");
             }
         } else {
-            message = message.append(Component.newline())
-                    .append(Component.text("This mute is permanent.", NamedTextColor.DARK_RED));
+            message.append("§4This mute is permanent.\n");
         }
         
-        return message;
-    }
-    
-    private String formatTime(long milliseconds) {
-        long seconds = milliseconds / 1000;
-        long minutes = seconds / 60;
-        long hours = minutes / 60;
-        long days = hours / 24;
-        
-        if (days > 0) {
-            return String.format("%dd %dh %dm", days, hours % 24, minutes % 60);
-        } else if (hours > 0) {
-            return String.format("%dh %dm", hours, minutes % 60);
-        } else if (minutes > 0) {
-            return String.format("%dm %ds", minutes, seconds % 60);
-        } else {
-            return String.format("%ds", seconds);
-        }
+        return message.toString();
     }
 }

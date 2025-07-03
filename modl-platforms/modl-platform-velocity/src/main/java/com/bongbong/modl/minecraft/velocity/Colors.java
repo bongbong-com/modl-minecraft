@@ -5,6 +5,8 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class Colors {
     public static Component get(String string) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(string);
+        // Convert § to & for legacy serializer
+        String converted = string.replace('§', '&');
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(converted);
     }
 }
