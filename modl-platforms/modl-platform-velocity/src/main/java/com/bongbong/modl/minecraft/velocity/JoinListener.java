@@ -8,6 +8,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
@@ -27,6 +28,7 @@ public class JoinListener {
     private final ModlHttpClient httpClient;
     private final Cache cache;
     private final Logger logger;
+    private final ChatMessageCache chatMessageCache;
 
     @Subscribe
     public void onLogin(LoginEvent event) {
@@ -106,11 +108,18 @@ public class JoinListener {
         
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
+        
+        // Remove player from chat message cache
+        chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }
     
     
     public Cache getPunishmentCache() {
         return cache;
+    }
+    
+    public ChatMessageCache getChatMessageCache() {
+        return chatMessageCache;
     }
     
     /**

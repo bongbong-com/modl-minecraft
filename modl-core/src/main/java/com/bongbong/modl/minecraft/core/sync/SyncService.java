@@ -322,6 +322,8 @@ public class SyncService {
                 return executeBan(uuid, username, punishment);
             } else if (punishment.isMute()) {
                 return executeMute(uuid, username, punishment);
+            } else if (punishment.isKick()) {
+                return executeKick(uuid, username, punishment);
             } else {
                 logger.warning("Unknown punishment type: " + punishment.getType());
                 return false;
@@ -373,6 +375,29 @@ public class SyncService {
             return true;
         } catch (Exception e) {
             logger.severe("Error executing ban: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Execute a kick punishment
+     */
+    private boolean executeKick(UUID uuid, String username, SimplePunishment punishment) {
+        try {
+            // Kick player if online
+            AbstractPlayer player = platform.getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                String kickMsg = String.format("You have been kicked: %s", punishment.getDescription());
+                platform.kickPlayer(player, kickMsg);
+                
+                logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
+                return true;
+            } else {
+                logger.info(String.format("Player %s is not online, kick punishment ignored", username));
+                return true; // Still considered successful since player is offline
+            }
+        } catch (Exception e) {
+            logger.severe("Error executing kick: " + e.getMessage());
             return false;
         }
     }

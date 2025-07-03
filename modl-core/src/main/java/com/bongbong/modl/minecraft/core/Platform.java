@@ -28,5 +28,6 @@ public interface Platform {
     String getServerVersion();
     void runOnMainThread(Runnable task);
     void kickPlayer(AbstractPlayer player, String reason);
+    String getServerName();
 }
 

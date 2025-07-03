@@ -8,6 +8,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
@@ -27,6 +28,7 @@ public class SpigotListener implements Listener {
     private final SpigotPlatform platform;
     private final Cache cache;
     private final ModlHttpClient httpClient;
+    private final ChatMessageCache chatMessageCache;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
@@ -89,10 +91,21 @@ public class SpigotListener implements Listener {
         
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
+        
+        // Remove player from chat message cache
+        chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
+        // Cache the chat message first (before potentially cancelling)
+        chatMessageCache.addMessage(
+            platform.getServerName(), // Server name for cross-platform compatibility
+            event.getPlayer().getUniqueId().toString(),
+            event.getPlayer().getName(),
+            event.getMessage()
+        );
+        
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setCancelled(true);
@@ -140,6 +153,10 @@ public class SpigotListener implements Listener {
     
     public Cache getPunishmentCache() {
         return cache;
+    }
+    
+    public ChatMessageCache getChatMessageCache() {
+        return chatMessageCache;
     }
     
     /**

@@ -159,4 +159,9 @@ public class VelocityPlatform implements Platform {
             velocityPlayer.disconnect(get(reason));
         }
     }
+
+    @Override
+    public String getServerName() {
+        return "velocity-proxy"; // Default server name, can be made configurable
+    }
 }

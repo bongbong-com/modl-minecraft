@@ -8,6 +8,8 @@ import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.Platform;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
@@ -93,7 +95,15 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());
+        if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
+            bukkitPlayer.kickPlayer(reason);
+        }
+    }
 
+    @Override
+    public String getServerName() {
+        return "spigot-server"; // Default server name, can be made configurable
     }
 
     public Logger getLogger() {

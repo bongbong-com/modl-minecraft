@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.velocity;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.PlayerChatEvent;
@@ -13,14 +14,27 @@ public class ChatListener {
     
     private final VelocityPlatform platform;
     private final Cache cache;
+    private final ChatMessageCache chatMessageCache;
     
-    public ChatListener(VelocityPlatform platform, Cache cache) {
+    public ChatListener(VelocityPlatform platform, Cache cache, ChatMessageCache chatMessageCache) {
         this.platform = platform;
         this.cache = cache;
+        this.chatMessageCache = chatMessageCache;
     }
     
     @Subscribe
     public void onPlayerChat(PlayerChatEvent event) {
+        // Cache the chat message first (before potentially cancelling)
+        // Use the player's current server name for cross-server compatibility
+        String serverName = event.getPlayer().getCurrentServer().isPresent() ? 
+            event.getPlayer().getCurrentServer().get().getServerInfo().getName() : "unknown";
+        chatMessageCache.addMessage(
+            serverName,
+            event.getPlayer().getUniqueId().toString(),
+            event.getPlayer().getUsername(),
+            event.getMessage()
+        );
+        
         if (cache.isMuted(event.getPlayer().getUniqueId())) {
             // Cancel the chat event
             event.setResult(PlayerChatEvent.ChatResult.denied());
@@ -61,5 +75,9 @@ public class ChatListener {
         }
         
         return message.toString();
+    }
+    
+    public ChatMessageCache getChatMessageCache() {
+        return chatMessageCache;
     }
 }

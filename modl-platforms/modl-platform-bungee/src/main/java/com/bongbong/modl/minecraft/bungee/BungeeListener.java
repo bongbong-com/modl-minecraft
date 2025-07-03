@@ -8,6 +8,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -29,6 +30,7 @@ public class BungeeListener implements Listener {
     private final BungeePlatform platform;
     private final Cache cache;
     private final ModlHttpClient httpClient;
+    private final ChatMessageCache chatMessageCache;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
@@ -92,6 +94,9 @@ public class BungeeListener implements Listener {
         
         // Remove player from punishment cache
         cache.removePlayer(event.getPlayer().getUniqueId());
+        
+        // Remove player from chat message cache
+        chatMessageCache.removePlayer(event.getPlayer().getUniqueId().toString());
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -101,6 +106,16 @@ public class BungeeListener implements Listener {
         }
 
         ProxiedPlayer sender = (ProxiedPlayer) event.getSender();
+        
+        // Cache the chat message first (before potentially cancelling)
+        // Use the player's current server name for cross-server compatibility
+        String serverName = sender.getServer() != null ? sender.getServer().getInfo().getName() : "unknown";
+        chatMessageCache.addMessage(
+            serverName,
+            sender.getUniqueId().toString(),
+            sender.getName(),
+            event.getMessage()
+        );
         
         if (cache.isMuted(sender.getUniqueId())) {
             // Cancel the chat event
@@ -149,6 +164,10 @@ public class BungeeListener implements Listener {
     
     public Cache getPunishmentCache() {
         return cache;
+    }
+    
+    public ChatMessageCache getChatMessageCache() {
+        return chatMessageCache;
     }
     
     /**

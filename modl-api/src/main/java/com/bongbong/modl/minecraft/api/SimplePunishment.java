@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 @NoArgsConstructor
 public class SimplePunishment {
     @NotNull
-    private String type; // "BAN" or "MUTE"
+    private String type; // "BAN", "MUTE", or "KICK"
     
     private boolean started;
     
@@ -39,6 +39,13 @@ public class SimplePunishment {
      */
     public boolean isMute() {
         return "MUTE".equalsIgnoreCase(type);
+    }
+    
+    /**
+     * Check if this is a kick punishment
+     */
+    public boolean isKick() {
+        return "KICK".equalsIgnoreCase(type);
     }
     
     /**

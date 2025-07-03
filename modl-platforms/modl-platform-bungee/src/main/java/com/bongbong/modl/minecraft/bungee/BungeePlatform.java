@@ -8,6 +8,9 @@ import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.Platform;
 import dev.simplix.cirrus.player.CirrusPlayerWrapper;
 import lombok.RequiredArgsConstructor;
+import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
@@ -95,7 +98,15 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void kickPlayer(AbstractPlayer player, String reason) {
+        ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
+        if (bungeePlayer != null && bungeePlayer.isConnected()) {
+            bungeePlayer.disconnect(new TextComponent(reason));
+        }
+    }
 
+    @Override
+    public String getServerName() {
+        return "bungee-proxy"; // Default server name, can be made configurable
     }
 
     public Logger getLogger() {

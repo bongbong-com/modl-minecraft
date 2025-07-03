@@ -10,6 +10,7 @@ import com.bongbong.modl.minecraft.api.http.response.CreateTicketResponse;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.menus.ReportMenu;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 
@@ -23,11 +24,10 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class TicketCommands extends BaseCommand {
     private final Platform platform;
-
-
     private final ModlHttpClient httpClient;
     private final String panelUrl; // e.g., "https://myserver.modl.gg"
     private final LocaleManager locale;
+    private final ChatMessageCache chatMessageCache;
     
     @Default
     @CommandPermission("modl.report")
@@ -58,8 +58,13 @@ public class TicketCommands extends BaseCommand {
             return;
         }
         
-        // TODO: Save recent chat logs for the target player
-        List<String> chatLogs = null;
+        // Get the last 30 chat messages from the server where the reporter is located
+        List<String> chatLogs = chatMessageCache.getRecentMessages(hero.uuid().toString(), 30);
+        
+        // If no messages are cached, provide an empty list
+        if (chatLogs.isEmpty()) {
+            sendMessage(sender, locale.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.username())));
+        }
 
         CreateTicketRequest request = new CreateTicketRequest(
             hero.uuid().toString(),                                         // creatorUuid
@@ -67,7 +72,7 @@ public class TicketCommands extends BaseCommand {
             "chat",                                            // type
             locale.getMessage("report_gui.categories.chat_violation.subject", Map.of("player", targetPlayer.username())), // subject
             "Chat report: " + (reason != null ? reason : locale.getMessage("chat_logs.auto_reason")), // description
-            "unknown-uuid",                                    // reportedPlayerUuid
+            targetPlayer.uuid().toString(),                    // reportedPlayerUuid
             targetPlayer.username(),                                      // reportedPlayerName
             chatLogs,                                          // chatMessages
             List.of(), // tags

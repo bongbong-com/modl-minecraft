@@ -4,6 +4,7 @@ import co.aikar.commands.VelocityCommandManager;
 import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.PluginLoader;
 import com.bongbong.modl.minecraft.core.plugin.PluginInfo;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -49,10 +50,11 @@ public final class VelocityPlugin {
 //        new CirrusVelocity(this, server, server.getCommandManager()).init();
 
         VelocityPlatform platform = new VelocityPlatform(this.server, commandManager);
-        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder);
+        ChatMessageCache chatMessageCache = new ChatMessageCache();
+        this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache);
 
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger));
-        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache()));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache));
+        server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache));
     }
 
     @Subscribe

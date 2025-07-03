@@ -13,6 +13,7 @@ import java.util.List;
 public class PlayerLoginResponse {
     private int status;
     private List<SimplePunishment> activePunishments;
+    private List<String> pendingNotifications;
     
     public boolean hasActiveBan() {
         return activePunishments != null && activePunishments.stream().anyMatch(SimplePunishment::isBan);
@@ -34,5 +35,9 @@ public class PlayerLoginResponse {
             .filter(SimplePunishment::isMute)
             .findFirst()
             .orElse(null) : null;
+    }
+    
+    public boolean hasNotifications() {
+        return pendingNotifications != null && !pendingNotifications.isEmpty();
     }
 }

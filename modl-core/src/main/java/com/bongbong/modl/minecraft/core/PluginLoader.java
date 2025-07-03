@@ -10,6 +10,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.impl.commands.TicketCommands;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.sync.SyncService;
 import lombok.Getter;
 
@@ -24,8 +25,10 @@ public class PluginLoader {
     private final ModlHttpClient httpClient;
     private final Cache cache;
     private final SyncService syncService;
+    private final ChatMessageCache chatMessageCache;
 
-    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory) {
+    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache) {
+        this.chatMessageCache = chatMessageCache;
         cache = new Cache();
 
         HttpManager httpManager = new HttpManager(
@@ -59,7 +62,7 @@ public class PluginLoader {
 
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
 //
-        commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager));
+        commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager, chatMessageCache));
 //        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
     }
 

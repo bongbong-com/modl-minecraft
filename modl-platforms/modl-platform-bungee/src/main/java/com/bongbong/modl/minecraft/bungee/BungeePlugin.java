@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.bungee;
 import co.aikar.commands.BungeeCommandManager;
 import com.bongbong.modl.minecraft.core.HttpManager;
 import com.bongbong.modl.minecraft.core.PluginLoader;
+import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import dev.simplix.cirrus.bungee.CirrusBungee;
 import lombok.Getter;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -25,8 +26,9 @@ public class BungeePlugin extends Plugin {
         new CirrusBungee(this).init();
 
         BungeePlatform platform = new BungeePlatform(commandManager, getLogger());
-        PluginLoader loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath());
-        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient()));
+        ChatMessageCache chatMessageCache = new ChatMessageCache();
+        PluginLoader loader = new PluginLoader(platform, new BungeeCommandRegister(commandManager), getDataFolder().toPath(), chatMessageCache);
+        getProxy().getPluginManager().registerListener(this, new BungeeListener(platform, loader.getCache(), loader.getHttpClient(), chatMessageCache));
     }
 
     @Override

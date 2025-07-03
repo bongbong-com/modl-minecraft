@@ -30,6 +30,9 @@ public class SyncResponse {
         
         @NotNull
         private List<ModifiedPunishment> recentlyModifiedPunishments;
+        
+        @NotNull
+        private List<PlayerNotification> playerNotifications;
     }
     
     @Data
@@ -79,5 +82,21 @@ public class SyncResponse {
         private String type;
         
         private Long effectiveDuration;
+    }
+    
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class PlayerNotification {
+        @NotNull
+        private String id;
+        
+        @NotNull
+        private String message;
+        
+        @NotNull
+        private String type;
+        
+        private Long timestamp;
     }
 }
