@@ -9,7 +9,9 @@ import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
+import com.bongbong.modl.minecraft.core.util.IpApiClient;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
+import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -23,6 +25,7 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class BungeeListener implements Listener {
@@ -34,12 +37,29 @@ public class BungeeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(LoginEvent event) {
+        // Extract clean IP address from socket address (removes port)
+        String socketAddress = event.getConnection().getSocketAddress().toString();
+        String ipAddress = socketAddress.startsWith("/") ? socketAddress.substring(1) : socketAddress;
+        if (ipAddress.contains(":")) {
+            ipAddress = ipAddress.substring(0, ipAddress.indexOf(":"));
+        }
+        
+        // Get IP information asynchronously but wait for it (with timeout)
+        JsonObject ipInfo = null;
+        try {
+            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get IP info for " + ipAddress + " within timeout: " + e.getMessage());
+            // Continue without IP info
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getConnection().getUniqueId().toString(),
                 event.getConnection().getName(),
-                event.getConnection().getSocketAddress().toString(),
+                ipAddress,
                 null,
-                null
+                ipInfo
         );
 
         try {

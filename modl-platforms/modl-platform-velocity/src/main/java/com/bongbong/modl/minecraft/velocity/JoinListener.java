@@ -9,7 +9,9 @@ import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
+import com.bongbong.modl.minecraft.core.util.IpApiClient;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
+import com.google.gson.JsonObject;
 import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
@@ -21,6 +23,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class JoinListener {
@@ -32,12 +35,24 @@ public class JoinListener {
 
     @Subscribe
     public void onLogin(LoginEvent event) {
+        String ipAddress = event.getPlayer().getRemoteAddress().getAddress().getHostAddress();
+        
+        // Get IP information asynchronously but wait for it (with timeout)
+        JsonObject ipInfo = null;
+        try {
+            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
+        } catch (Exception e) {
+            logger.warn("Failed to get IP info for {} within timeout: {}", ipAddress, e.getMessage());
+            // Continue without IP info
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getUsername(),
-                event.getPlayer().getRemoteAddress().getAddress().getHostAddress(),
+                ipAddress,
                 null,
-                null
+                ipInfo
         );
 
         try {

@@ -9,7 +9,9 @@ import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
+import com.bongbong.modl.minecraft.core.util.IpApiClient;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
+import com.google.gson.JsonObject;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
@@ -21,6 +23,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 public class SpigotListener implements Listener {
@@ -32,12 +35,24 @@ public class SpigotListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
+        String ipAddress = event.getAddress().getHostAddress();
+        
+        // Get IP information asynchronously but wait for it (with timeout)
+        JsonObject ipInfo = null;
+        try {
+            CompletableFuture<JsonObject> ipInfoFuture = IpApiClient.getIpInfo(ipAddress);
+            ipInfo = ipInfoFuture.get(3, TimeUnit.SECONDS); // 3 second timeout
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to get IP info for " + ipAddress + " within timeout: " + e.getMessage());
+            // Continue without IP info
+        }
+        
         PlayerLoginRequest request = new PlayerLoginRequest(
                 event.getPlayer().getUniqueId().toString(),
                 event.getPlayer().getName(),
-                event.getAddress().getHostAddress(),
+                ipAddress,
                 null,
-                null
+                ipInfo
         );
 
         try {
