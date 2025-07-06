@@ -33,6 +33,9 @@ public class SyncResponse {
         
         @NotNull
         private List<PlayerNotification> playerNotifications;
+        
+        @NotNull
+        private List<ActiveStaffMember> activeStaffMembers;
     }
     
     @Data
@@ -98,5 +101,28 @@ public class SyncResponse {
         private String type;
         
         private Long timestamp;
+    }
+    
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ActiveStaffMember {
+        @NotNull
+        private String minecraftUuid;
+        
+        @NotNull
+        private String minecraftUsername;
+        
+        @NotNull
+        private String staffUsername;
+        
+        @NotNull
+        private String staffRole;
+        
+        @NotNull
+        private List<String> permissions;
+        
+        @NotNull
+        private String email;
     }
 }

@@ -53,7 +53,7 @@ public final class VelocityPlugin {
         ChatMessageCache chatMessageCache = new ChatMessageCache();
         this.pluginLoader = new PluginLoader(platform, new VelocityCommandRegister(commandManager), folder, chatMessageCache);
 
-        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache));
+        server.getEventManager().register(this, new JoinListener(pluginLoader.getHttpClient(), pluginLoader.getCache(), logger, chatMessageCache, platform));
         server.getEventManager().register(this, new ChatListener(platform, pluginLoader.getCache(), chatMessageCache));
     }
 

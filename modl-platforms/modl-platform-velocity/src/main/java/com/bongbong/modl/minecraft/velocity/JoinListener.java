@@ -7,6 +7,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
+import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.util.IpApiClient;
@@ -32,6 +33,7 @@ public class JoinListener {
     private final Cache cache;
     private final Logger logger;
     private final ChatMessageCache chatMessageCache;
+    private final Platform platform;
 
     @Subscribe
     public void onLogin(LoginEvent event) {
@@ -52,7 +54,8 @@ public class JoinListener {
                 event.getPlayer().getUsername(),
                 ipAddress,
                 null,
-                ipInfo
+                ipInfo,
+                platform.getServerName()
         );
 
         try {

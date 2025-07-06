@@ -59,7 +59,8 @@ public class BungeeListener implements Listener {
                 event.getConnection().getName(),
                 ipAddress,
                 null,
-                ipInfo
+                ipInfo,
+                platform.getServerName()
         );
 
         try {
@@ -93,7 +94,8 @@ public class BungeeListener implements Listener {
                 event.getPlayer().getName(),
                 event.getPlayer().getSocketAddress().toString(),
                 null,
-                null
+                null,
+                platform.getServerName()
         );
         
         httpClient.playerLogin(request).thenAccept(response -> {

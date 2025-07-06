@@ -17,4 +17,6 @@ public class PlayerLoginRequest {
     private final String skinHash;
     @Nullable
     private final JsonObject ipInfo;
+    @Nullable
+    private final String serverName;
 }

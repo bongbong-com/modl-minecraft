@@ -265,6 +265,11 @@ public class SyncService {
         for (SyncResponse.ModifiedPunishment modified : data.getRecentlyModifiedPunishments()) {
             processModifiedPunishment(modified);
         }
+        
+        // Process active staff members
+        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
+            processActiveStaffMember(staffMember);
+        }
     }
     
     /**
@@ -471,6 +476,36 @@ public class SyncService {
                     logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
                     return null;
                 });
+    }
+    
+    /**
+     * Process active staff member information
+     */
+    private void processActiveStaffMember(SyncResponse.ActiveStaffMember staffMember) {
+        try {
+            UUID uuid = UUID.fromString(staffMember.getMinecraftUuid());
+            AbstractPlayer player = platform.getPlayer(uuid);
+            
+            if (player != null && player.isOnline()) {
+                // Cache staff member information for easy access
+                cache.cacheStaffMember(uuid, staffMember);
+                
+                logger.info(String.format("Updated staff member data for %s (%s) - Role: %s, Permissions: %d", 
+                        staffMember.getMinecraftUsername(), 
+                        staffMember.getStaffUsername(),
+                        staffMember.getStaffRole(),
+                        staffMember.getPermissions().size()));
+                
+                // Notify staff member of their permissions (optional)
+                if (platform.getConfig().getBoolean("staff.notify-permissions-on-sync", false)) {
+                    String permissionMessage = String.format("§7[Staff] You have %d permissions as %s", 
+                            staffMember.getPermissions().size(), staffMember.getStaffRole());
+                    platform.sendMessage(player, permissionMessage);
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Error processing staff member data: " + e.getMessage());
+        }
     }
     
 }

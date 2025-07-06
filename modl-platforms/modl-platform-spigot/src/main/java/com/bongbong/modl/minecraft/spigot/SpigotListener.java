@@ -52,7 +52,8 @@ public class SpigotListener implements Listener {
                 event.getPlayer().getName(),
                 ipAddress,
                 null,
-                ipInfo
+                ipInfo,
+                platform.getServerName()
         );
 
         try {
@@ -85,7 +86,8 @@ public class SpigotListener implements Listener {
                 event.getPlayer().getName(),
                 event.getPlayer().getAddress().getHostName(),
                 null,
-                null
+                null,
+                platform.getServerName()
         );
         
         httpClient.playerLogin(request).thenAccept(response -> {

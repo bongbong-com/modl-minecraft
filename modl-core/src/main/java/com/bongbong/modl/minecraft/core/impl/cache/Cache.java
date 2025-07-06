@@ -2,6 +2,7 @@ package com.bongbong.modl.minecraft.core.impl.cache;
 
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
+import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -71,6 +72,25 @@ public class Cache {
         cache.remove(playerUuid);
     }
     
+    public void cacheStaffMember(UUID playerUuid, SyncResponse.ActiveStaffMember staffMember) {
+        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setStaffMember(staffMember);
+    }
+    
+    public SyncResponse.ActiveStaffMember getStaffMember(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        return data != null ? data.getStaffMember() : null;
+    }
+    
+    public boolean isStaffMember(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        return data != null && data.getStaffMember() != null;
+    }
+    
+    public boolean hasPermission(UUID playerUuid, String permission) {
+        SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
+        return staffMember != null && staffMember.getPermissions().contains(permission);
+    }
+    
     public void clear() {
         cache.clear();
     }
@@ -91,9 +111,10 @@ public class Cache {
     public static class CachedPlayerData {
         private Punishment mute;
         private SimplePunishment simpleMute;
+        private SyncResponse.ActiveStaffMember staffMember;
         
         public boolean isEmpty() {
-            return mute == null && simpleMute == null;
+            return mute == null && simpleMute == null && staffMember == null;
         }
     }
 }
