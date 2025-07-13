@@ -27,5 +27,7 @@ public class PunishmentTypesResponse {
         private final Boolean singleSeverityPunishment;
         private final String staffDescription;
         private final String playerDescription;
+        private final Boolean permanentUntilSkinChange;
+        private final Boolean permanentUntilNameChange;
     }
 }

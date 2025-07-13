@@ -70,9 +70,9 @@ public class PluginLoader {
         commandManager.registerCommand(punishCommand);
         
         // Set up punishment types tab completion
-        commandManager.getCommandCompletions().registerAsyncCompletion("punishment-types", c -> {
-            return CompletableFuture.supplyAsync(() -> punishCommand.getPunishmentTypeNames());
-        });
+        commandManager.getCommandCompletions().registerCompletion("punishment-types", c -> 
+            punishCommand.getPunishmentTypeNames()
+        );
         
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();

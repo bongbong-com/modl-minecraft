@@ -123,7 +123,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<Void> createPunishment(@NotNull CreatePunishmentRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishments"))
+                .uri(URI.create(baseUrl + "/minecraft/punishment/create"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -145,7 +145,7 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
         return sendAsync(HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/minecraft/punishments"))
+                .uri(URI.create(baseUrl + "/minecraft/punishment/dynamic"))
                 .header("X-API-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
@@ -155,19 +155,32 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PlayerGetResponse> getPlayer(@NotNull PlayerGetRequest request) {
-        return null;
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/player?minecraftUuid=" + request.getMinecraftUuid()))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), PlayerGetResponse.class);
     }
 
     @NotNull
     @Override
     public CompletableFuture<PlayerNameResponse> getPlayer(@NotNull PlayerNameRequest request) {
-        return null;
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/player-name?username=" + request.getMinecraftUsername()))
+                .header("X-API-Key", apiKey)
+                .GET()
+                .build(), PlayerNameResponse.class);
     }
 
     @NotNull
     @Override
     public CompletableFuture<PlayerNoteCreateResponse> createPlayerNoteWithResponse(@NotNull PlayerNoteCreateRequest request) {
-        return null;
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/player/" + request.getTargetUuid() + "/notes"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), PlayerNoteCreateResponse.class);
     }
 
     @NotNull
