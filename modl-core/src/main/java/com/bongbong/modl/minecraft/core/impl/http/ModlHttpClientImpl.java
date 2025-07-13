@@ -144,7 +144,12 @@ public class ModlHttpClientImpl implements ModlHttpClient {
     @NotNull
     @Override
     public CompletableFuture<PunishmentCreateResponse> createPunishmentWithResponse(@NotNull PunishmentCreateRequest request) {
-        return null;
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/punishments"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), PunishmentCreateResponse.class);
     }
 
     @NotNull
@@ -278,6 +283,17 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 });
     }
     
+    @NotNull
+    @Override
+    public CompletableFuture<PunishmentTypesResponse> getPunishmentTypes() {
+        return sendAsync(HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/minecraft/punishment-types"))
+                        .header("X-API-Key", apiKey)
+                        .GET()
+                        .build(),
+                PunishmentTypesResponse.class);
+    }
+
     private String generateRequestId() {
         return String.valueOf(System.nanoTime() % 1000000);
     }

@@ -495,13 +495,8 @@ public class SyncService {
                         staffMember.getStaffUsername(),
                         staffMember.getStaffRole(),
                         staffMember.getPermissions().size()));
-                
-                // Notify staff member of their permissions (optional)
-                if (platform.getConfig().getBoolean("staff.notify-permissions-on-sync", false)) {
-                    String permissionMessage = String.format("§7[Staff] You have %d permissions as %s", 
-                            staffMember.getPermissions().size(), staffMember.getStaffRole());
-                    platform.sendMessage(player, permissionMessage);
-                }
+
+
             }
         } catch (Exception e) {
             logger.warning("Error processing staff member data: " + e.getMessage());

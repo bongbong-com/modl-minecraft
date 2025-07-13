@@ -9,6 +9,7 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerGetRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.impl.commands.TicketCommands;
+import com.bongbong.modl.minecraft.core.impl.commands.punishments.PunishCommand;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.sync.SyncService;
@@ -63,6 +64,19 @@ public class PluginLoader {
         commandManager.getCommandContexts().registerContext(Account.class, (c) -> fetchPlayer(c.popFirstArg(), httpClient));
 //
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager, chatMessageCache));
+        
+        // Register punishment command with tab completion
+        PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform);
+        commandManager.registerCommand(punishCommand);
+        
+        // Set up punishment types tab completion
+        commandManager.getCommandCompletions().registerAsyncCompletion("punishment-types", c -> {
+            return CompletableFuture.supplyAsync(() -> punishCommand.getPunishmentTypeNames());
+        });
+        
+        // Initialize punishment types cache
+        punishCommand.initializePunishmentTypes();
+        
 //        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
     }
 

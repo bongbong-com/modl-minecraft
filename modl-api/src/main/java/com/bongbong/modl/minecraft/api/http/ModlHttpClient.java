@@ -52,4 +52,7 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request);
+
+    @NotNull
+    CompletableFuture<PunishmentTypesResponse> getPunishmentTypes();
 }
