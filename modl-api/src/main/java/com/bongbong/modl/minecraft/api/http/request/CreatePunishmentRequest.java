@@ -1,6 +1,7 @@
 package com.bongbong.modl.minecraft.api.http.request;
 
 import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,6 +14,7 @@ public class CreatePunishmentRequest {
     private final String targetUuid;
     @NotNull
     private final String issuerName;
+    @SerializedName("type_ordinal")
     private final int typeOrdinal;
     @Nullable
     private final String reason;

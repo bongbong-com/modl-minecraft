@@ -6,14 +6,15 @@ import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Cache {
     
     private final Map<UUID, CachedPlayerData> cache = new ConcurrentHashMap<>();
+    private final Map<UUID, StaffPermissions> staffPermissionsCache = new ConcurrentHashMap<>();
+    // Notification storage - maps player UUID to list of pending notifications
+    private final Map<UUID, List<PendingNotification>> pendingNotificationsCache = new ConcurrentHashMap<>();
     
     public void cacheMute(UUID playerUuid, Punishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setMute(mute);
@@ -87,12 +88,93 @@ public class Cache {
     }
     
     public boolean hasPermission(UUID playerUuid, String permission) {
+        // Check new staff permissions cache first
+        StaffPermissions staffPerms = staffPermissionsCache.get(playerUuid);
+        if (staffPerms != null) {
+            return staffPerms.getPermissions().contains(permission);
+        }
+        
+        // Fallback to old sync-based staff member (for backward compatibility)
         SyncResponse.ActiveStaffMember staffMember = getStaffMember(playerUuid);
         return staffMember != null && staffMember.getPermissions().contains(permission);
     }
     
+    public void cacheStaffPermissions(UUID playerUuid, String staffRole, List<String> permissions) {
+        staffPermissionsCache.put(playerUuid, new StaffPermissions(staffRole, permissions));
+    }
+    
+    public void clearStaffPermissions() {
+        staffPermissionsCache.clear();
+    }
+    
+    public boolean isStaffMemberByPermissions(UUID playerUuid) {
+        return staffPermissionsCache.containsKey(playerUuid);
+    }
+    
+    // ==================== NOTIFICATION MANAGEMENT ====================
+    
+    /**
+     * Cache a pending notification for a player
+     */
+    public void cacheNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
+        PendingNotification pending = new PendingNotification(
+            notification.getId(),
+            notification.getMessage(),
+            notification.getType(),
+            notification.getTimestamp(),
+            System.currentTimeMillis() // Cache time
+        );
+        
+        pendingNotificationsCache.computeIfAbsent(playerUuid, k -> new ArrayList<>()).add(pending);
+    }
+    
+    /**
+     * Get all pending notifications for a player
+     */
+    public List<PendingNotification> getPendingNotifications(UUID playerUuid) {
+        return pendingNotificationsCache.getOrDefault(playerUuid, new ArrayList<>());
+    }
+    
+    /**
+     * Remove a specific notification by ID
+     */
+    public boolean removeNotification(UUID playerUuid, String notificationId) {
+        List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
+        if (notifications != null) {
+            boolean removed = notifications.removeIf(n -> n.getId().equals(notificationId));
+            if (notifications.isEmpty()) {
+                pendingNotificationsCache.remove(playerUuid);
+            }
+            return removed;
+        }
+        return false;
+    }
+    
+    /**
+     * Remove all notifications for a player
+     */
+    public List<PendingNotification> clearNotifications(UUID playerUuid) {
+        return pendingNotificationsCache.remove(playerUuid);
+    }
+    
+    /**
+     * Get notification count for a player
+     */
+    public int getNotificationCount(UUID playerUuid) {
+        List<PendingNotification> notifications = pendingNotificationsCache.get(playerUuid);
+        return notifications != null ? notifications.size() : 0;
+    }
+    
+    /**
+     * Check if player has any pending notifications
+     */
+    public boolean hasPendingNotifications(UUID playerUuid) {
+        return getNotificationCount(playerUuid) > 0;
+    }
+    
     public void clear() {
         cache.clear();
+        pendingNotificationsCache.clear();
     }
     
     public int size() {
@@ -115,6 +197,41 @@ public class Cache {
         
         public boolean isEmpty() {
             return mute == null && simpleMute == null && staffMember == null;
+        }
+    }
+    
+    @Getter
+    public static class StaffPermissions {
+        private final String staffRole;
+        private final List<String> permissions;
+        
+        public StaffPermissions(String staffRole, List<String> permissions) {
+            this.staffRole = staffRole;
+            this.permissions = permissions != null ? permissions : List.of();
+        }
+    }
+    
+    @Getter
+    public static class PendingNotification {
+        private final String id;
+        private final String message;
+        private final String type;
+        private final Long timestamp;
+        private final long cachedTime;
+        
+        public PendingNotification(String id, String message, String type, Long timestamp, long cachedTime) {
+            this.id = id;
+            this.message = message;
+            this.type = type;
+            this.timestamp = timestamp;
+            this.cachedTime = cachedTime;
+        }
+        
+        /**
+         * Check if this notification has expired (older than 24 hours)
+         */
+        public boolean isExpired() {
+            return (System.currentTimeMillis() - cachedTime) > 24 * 60 * 60 * 1000; // 24 hours
         }
     }
 }

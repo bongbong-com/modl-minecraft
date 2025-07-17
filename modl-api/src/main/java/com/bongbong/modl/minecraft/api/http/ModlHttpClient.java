@@ -54,5 +54,14 @@ public interface ModlHttpClient {
     CompletableFuture<Void> acknowledgePunishment(@NotNull PunishmentAcknowledgeRequest request);
 
     @NotNull
+    CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request);
+
+    @NotNull
     CompletableFuture<PunishmentTypesResponse> getPunishmentTypes();
+
+    @NotNull
+    CompletableFuture<StaffPermissionsResponse> getStaffPermissions();
+
+    @NotNull
+    CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request);
 }

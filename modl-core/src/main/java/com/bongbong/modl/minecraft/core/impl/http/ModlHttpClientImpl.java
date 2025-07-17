@@ -210,6 +210,17 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                 .build(), Void.class);
     }
 
+    @NotNull
+    @Override
+    public CompletableFuture<Void> acknowledgeNotifications(@NotNull NotificationAcknowledgeRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/minecraft/notification/acknowledge"))
+                .header("X-API-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .build(), Void.class);
+    }
+
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
         return sendAsync(request, responseType, null);
     }
@@ -305,6 +316,27 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                         .GET()
                         .build(),
                 PunishmentTypesResponse.class);
+    }
+
+    @Override
+    public CompletableFuture<StaffPermissionsResponse> getStaffPermissions() {
+        return sendAsync(HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/minecraft/staff-permissions"))
+                        .header("X-API-Key", apiKey)
+                        .GET()
+                        .build(),
+                StaffPermissionsResponse.class);
+    }
+
+    @Override
+    public CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/minecraft/player-lookup"))
+                        .header("X-API-Key", apiKey)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                        .build(),
+                PlayerLookupResponse.class);
     }
 
     private String generateRequestId() {

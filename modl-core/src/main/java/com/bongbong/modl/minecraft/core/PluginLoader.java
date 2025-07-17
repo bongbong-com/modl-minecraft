@@ -7,20 +7,22 @@ import com.bongbong.modl.minecraft.api.Account;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
 import com.bongbong.modl.minecraft.api.http.request.PlayerGetRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerNameRequest;
+import com.bongbong.modl.minecraft.api.http.response.PlayerNameResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.impl.commands.TicketCommands;
+import com.bongbong.modl.minecraft.core.impl.commands.PlayerLookupCommand;
 import com.bongbong.modl.minecraft.core.impl.commands.punishments.PunishCommand;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
 import com.bongbong.modl.minecraft.core.sync.SyncService;
 import lombok.Getter;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 import static com.bongbong.modl.minecraft.core.Constants.QUERY_MOJANG;
-
 @Getter
 public class PluginLoader {
     private final ModlHttpClient httpClient;
@@ -29,19 +31,29 @@ public class PluginLoader {
     private final ChatMessageCache chatMessageCache;
 
     public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache) {
+        this(platform, commandRegister, dataDirectory, chatMessageCache, new HttpManager(Constants.API_KEY, Constants.API_URL));
+    }
+    
+    public PluginLoader(Platform platform, PlatformCommandRegister commandRegister, Path dataDirectory, ChatMessageCache chatMessageCache, HttpManager httpManager) {
         this.chatMessageCache = chatMessageCache;
         cache = new Cache();
 
-        HttpManager httpManager = new HttpManager(
-                Constants.API_KEY,
-                Constants.API_URL
-        );
-
         this.httpClient = httpManager.getHttpClient();
 
-        // Initialize sync service
+        // Initialize locale manager with support for external locale files
+        LocaleManager localeManager = new LocaleManager();
         Logger logger = Logger.getLogger("MODL-" + platform.getClass().getSimpleName());
-        this.syncService = new SyncService(platform, httpClient, cache, logger);
+        
+        // Try to load locale from external file if it exists
+        Path localeFile = dataDirectory.resolve("locale").resolve("en_US.yml");
+        if (Files.exists(localeFile)) {
+            logger.info("Loading locale from external file: " + localeFile);
+            localeManager.loadFromFile(localeFile);
+        }
+
+        // Initialize sync service
+
+        this.syncService = new SyncService(platform, httpClient, cache, logger, localeManager);
         
         // Log configuration details
         logger.info("MODL Configuration:");
@@ -53,8 +65,6 @@ public class PluginLoader {
         // Start sync service
         syncService.start();
 
-        LocaleManager localeManager = new LocaleManager();
-
         CommandManager<?, ?, ?, ?, ?, ?> commandManager = platform.getCommandManager();
         commandManager.enableUnstableAPI("help");
 
@@ -65,8 +75,11 @@ public class PluginLoader {
 //
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager, chatMessageCache));
         
+        // Register player lookup command
+        commandManager.registerCommand(new PlayerLookupCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        
         // Register punishment command with tab completion
-        PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform);
+        PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform, cache, localeManager);
         commandManager.registerCommand(punishCommand);
         
         // Set up punishment types tab completion
@@ -77,7 +90,11 @@ public class PluginLoader {
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();
         
-//        commandRegister.register(new BanCommand(httpManager.getHttpClient()));
+        // Register manual punishment commands
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.BanCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.MuteCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.KickCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.BlacklistCommand(httpManager.getHttpClient(), platform, cache, localeManager));
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient) {
@@ -96,7 +113,16 @@ public class PluginLoader {
     }
 
     public static Account fetchPlayer(String target, ModlHttpClient httpClient) {
-        return httpClient.getPlayer(new PlayerNameRequest(target)).join().getPlayer();
+        try {
+            PlayerNameResponse response = httpClient.getPlayer(new PlayerNameRequest(target)).join();
+            if (response != null && response.isSuccess()) {
+                return response.getPlayer();
+            }
+        } catch (Exception e) {
+            // Log error but don't crash - return null to indicate player not found
+            System.err.println("[MODL] Error fetching player by name '" + target + "': " + e.getMessage());
+        }
+        return null;
     }
     
     /**

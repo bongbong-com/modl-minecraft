@@ -7,8 +7,10 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
+import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
+import com.bongbong.modl.minecraft.core.sync.SyncService;
 import com.bongbong.modl.minecraft.core.util.IpApiClient;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import com.google.gson.JsonObject;
@@ -23,6 +25,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
@@ -32,6 +35,7 @@ public class SpigotListener implements Listener {
     private final Cache cache;
     private final ModlHttpClient httpClient;
     private final ChatMessageCache chatMessageCache;
+    private final SyncService syncService;
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerLoginEvent event) {
@@ -94,10 +98,24 @@ public class SpigotListener implements Listener {
             if (response.hasActiveMute()) {
                 cache.cacheMute(event.getPlayer().getUniqueId(), response.getActiveMute());
             }
+            
+            // Process pending notifications from login response
+            if (response.hasNotifications()) {
+                for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                    // Convert map to PlayerNotification and deliver immediately
+                    SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                    if (notification != null) {
+                        syncService.deliverLoginNotification(event.getPlayer().getUniqueId(), notification);
+                    }
+                }
+            }
         }).exceptionally(throwable -> {
             platform.getLogger().severe("Failed to cache mute for " + event.getPlayer().getName() + ": " + throwable.getMessage());
             return null;
         });
+        
+        // Also deliver any cached notifications (fallback)
+        syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
@@ -197,6 +215,35 @@ public class SpigotListener implements Listener {
             });
         } catch (Exception e) {
             platform.getLogger().severe("Error acknowledging ban enforcement for punishment " + ban.getId() + ": " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Convert a map from the login response to a PlayerNotification object
+     */
+    private SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data) {
+        try {
+            SyncResponse.PlayerNotification notification = new SyncResponse.PlayerNotification();
+            notification.setId((String) data.get("id"));
+            notification.setMessage((String) data.get("message"));
+            notification.setType((String) data.get("type"));
+            
+            if (data.get("timestamp") instanceof Number) {
+                notification.setTimestamp(((Number) data.get("timestamp")).longValue());
+            }
+            
+            notification.setTargetPlayerUuid((String) data.get("targetPlayerUuid"));
+            
+            // Handle nested data map
+            Object nestedData = data.get("data");
+            if (nestedData instanceof Map) {
+                notification.setData((Map<String, Object>) nestedData);
+            }
+            
+            return notification;
+        } catch (Exception e) {
+            platform.getLogger().warning("Failed to convert notification data: " + e.getMessage());
+            return null;
         }
     }
 }

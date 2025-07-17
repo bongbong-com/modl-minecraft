@@ -19,6 +19,6 @@ public interface Constants {
     String API_URL = "https://001.cobl.gg/api";
     String PANEL_URL = "https://001.cobl.gg";
     
-    // Debug mode for HTTP requests - enabled by default for troubleshooting
-    boolean DEBUG_HTTP = Boolean.parseBoolean(System.getProperty("modl.debug.http", "true"));
+    // Debug mode for HTTP requests - disabled by default
+    boolean DEBUG_HTTP = Boolean.parseBoolean(System.getProperty("modl.debug.http", "false"));
 }

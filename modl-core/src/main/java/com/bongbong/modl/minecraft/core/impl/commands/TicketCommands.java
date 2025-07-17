@@ -30,7 +30,6 @@ public class TicketCommands extends BaseCommand {
     private final ChatMessageCache chatMessageCache;
     
     @Default
-    @CommandPermission("modl.report")
     @Description("Report a player - opens a GUI with customizable options")
     @Syntax("<player> [reason]")
     public void report(CommandIssuer sender, AbstractPlayer targetPlayer, @Optional String reason) {
@@ -47,7 +46,6 @@ public class TicketCommands extends BaseCommand {
     }
     
     @CommandAlias("chatreport")
-    @CommandPermission("modl.chatreport")
     @Description("Report a player for inappropriate chat and save chat logs")
     @Syntax("<player> [reason]")
     public void chatReport(CommandIssuer sender, AbstractPlayer targetPlayer, @Optional String reason) {
@@ -61,9 +59,10 @@ public class TicketCommands extends BaseCommand {
         // Get the last 30 chat messages from the server where the reporter is located
         List<String> chatLogs = chatMessageCache.getRecentMessages(hero.uuid().toString(), 30);
         
-        // If no messages are cached, provide an empty list
+        // If no messages are cached, show error and return
         if (chatLogs.isEmpty()) {
             sendMessage(sender, locale.getMessage("messages.no_chat_logs_available", Map.of("player", targetPlayer.username())));
+            return;
         }
 
         CreateTicketRequest request = new CreateTicketRequest(
@@ -83,7 +82,6 @@ public class TicketCommands extends BaseCommand {
     }
     
     @CommandAlias("bugreport")
-    @CommandPermission("modl.bugreport")
     @Description("Report a bug - creates an unfinished report with a form link")
     @Syntax("<title>")
     public void bugReport(CommandIssuer sender, String title) {
@@ -106,7 +104,6 @@ public class TicketCommands extends BaseCommand {
     }
     
     @CommandAlias("support")
-    @CommandPermission("modl.support")
     @Description("Request support - creates an unfinished request with a form link")
     @Syntax("<title>")
     public void supportRequest(CommandIssuer sender, String title) {
@@ -126,6 +123,28 @@ public class TicketCommands extends BaseCommand {
         );
         
         submitUnfinishedTicket(sender, request, "Support request", title);
+    }
+    
+    @CommandAlias("apply")
+    @Description("Submit a staff application - creates an unfinished application with a form link")
+    @Syntax("<position>")
+    public void staffApplication(CommandIssuer sender, String position) {
+        AbstractPlayer hero = platform.getAbstractPlayer(sender.getUniqueId(), false);
+        
+        CreateTicketRequest request = new CreateTicketRequest(
+            hero.uuid().toString(),                                         // creatorUuid
+            hero.username(),                                         // creatorName
+            "application",                                          // type
+            hero.username() + ": " + position + " Application", // subject
+            null,                                              // description (filled in form)
+            null,                                              // reportedPlayerUuid
+            null,                                              // reportedPlayerName
+            null,                                              // chatMessages
+            List.of("application", "staff"), // tags
+            "normal"                     // priority
+        );
+        
+        submitUnfinishedTicket(sender, request, "Staff application", position);
     }
     
     private void submitFinishedTicket(CommandIssuer sender, CreateTicketRequest request, String ticketType) {
@@ -161,7 +180,7 @@ public class TicketCommands extends BaseCommand {
                 sendMessage(sender, locale.getMessage("messages.created", Map.of("type", ticketType)));
                 sendMessage(sender, locale.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
                 
-                String formUrl = panelUrl + "/player-ticket/" + response.getTicketId();
+                String formUrl = panelUrl + "/ticket/" + response.getTicketId();
                 sendMessage(sender, locale.getMessage("messages.complete_form", Map.of("type", ticketType.toLowerCase(), "url", formUrl)));
                 sendMessage(sender, locale.getMessage("messages.form_title_note", Map.of("title", title)));
             } else {

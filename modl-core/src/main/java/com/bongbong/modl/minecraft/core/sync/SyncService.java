@@ -4,12 +4,14 @@ import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.request.SyncRequest;
 import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import com.bongbong.modl.minecraft.core.Constants;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
+import com.bongbong.modl.minecraft.core.locale.LocaleManager;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -17,8 +19,10 @@ import org.jetbrains.annotations.NotNull;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -37,6 +41,8 @@ public class SyncService {
     private final Cache cache;
     @NotNull
     private final Logger logger;
+    @NotNull
+    private final LocaleManager localeManager;
     
     private String lastSyncTimestamp;
     private ScheduledExecutorService syncExecutor;
@@ -266,9 +272,16 @@ public class SyncService {
             processModifiedPunishment(modified);
         }
         
-        // Process active staff members
-        for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
-            processActiveStaffMember(staffMember);
+        // Process active staff members (only if present - removed from sync in favor of startup loading)
+        if (data.getActiveStaffMembers() != null) {
+            for (SyncResponse.ActiveStaffMember staffMember : data.getActiveStaffMembers()) {
+                processActiveStaffMember(staffMember);
+            }
+        }
+        
+        // Process player notifications
+        for (SyncResponse.PlayerNotification notification : data.getPlayerNotifications()) {
+            processPlayerNotification(notification);
         }
     }
     
@@ -500,6 +513,222 @@ public class SyncService {
             }
         } catch (Exception e) {
             logger.warning("Error processing staff member data: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Process a player notification
+     */
+    private void processPlayerNotification(SyncResponse.PlayerNotification notification) {
+        try {
+            logger.info(String.format("Processing notification %s (type: %s): %s", 
+                    notification.getId(), notification.getType(), notification.getMessage()));
+            
+            // Check if this notification has a target player UUID
+            String targetPlayerUuid = notification.getTargetPlayerUuid();
+            if (targetPlayerUuid != null && !targetPlayerUuid.isEmpty()) {
+                try {
+                    UUID playerUuid = UUID.fromString(targetPlayerUuid);
+                    deliverNotificationToPlayer(playerUuid, notification);
+                } catch (IllegalArgumentException e) {
+                    logger.warning("Invalid UUID format in notification: " + targetPlayerUuid);
+                }
+            } else {
+                // Fallback for old format - deliver to all online players (deprecated)
+                handleNotificationForAllOnlinePlayers(notification);
+            }
+            
+        } catch (Exception e) {
+            logger.severe("Error processing player notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Deliver a notification to a specific player
+     */
+    private void deliverNotificationToPlayer(UUID playerUuid, SyncResponse.PlayerNotification notification) {
+        AbstractPlayer player = platform.getPlayer(playerUuid);
+        
+        if (player != null && player.isOnline()) {
+            // Player is online - deliver immediately
+            String message;
+            Map<String, Object> data = notification.getData();
+            
+            // Check if we have a ticket URL for clickable messages
+            if (data != null && data.containsKey("ticketUrl")) {
+                String ticketUrl = (String) data.get("ticketUrl");
+                String ticketId = (String) data.get("ticketId");
+                
+                // Create a simpler clickable message format that works across platforms
+                message = String.format(
+                    "{\"text\":\"\",\"extra\":[" +
+                    "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
+                    "{\"text\":\"%s \",\"color\":\"white\"}," +
+                    "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
+                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
+                    notification.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
+                );
+                
+                logger.info("Sending clickable notification JSON: " + message);
+                
+                platform.runOnMainThread(() -> {
+                    platform.sendJsonMessage(playerUuid, message);
+                });
+            } else {
+                // Fallback to regular message format
+                message = localeManager.getMessage("notification.ticket_reply", Map.of(
+                    "message", notification.getMessage()
+                ));
+                
+                platform.runOnMainThread(() -> {
+                    platform.sendMessage(playerUuid, message);
+                });
+            }
+            
+            logger.info(String.format("Delivered notification %s to online player %s", 
+                    notification.getId(), player.getName()));
+        } else {
+            // Player is offline - cache for later delivery
+            cache.cacheNotification(playerUuid, notification);
+            logger.info(String.format("Cached notification %s for offline player %s", 
+                    notification.getId(), playerUuid));
+        }
+    }
+    
+    /**
+     * Deliver a notification immediately for a player who just logged in
+     */
+    public void deliverLoginNotification(UUID playerUuid, SyncResponse.PlayerNotification notification) {
+        logger.info(String.format("Delivering login notification %s to player %s", 
+                notification.getId(), playerUuid));
+        deliverNotificationToPlayer(playerUuid, notification);
+    }
+    
+    /**
+     * Handle notification delivery for online players
+     * This is a temporary solution until we have proper player UUID targeting
+     */
+    private void handleNotificationForAllOnlinePlayers(SyncResponse.PlayerNotification notification) {
+        Collection<AbstractPlayer> onlinePlayers = platform.getOnlinePlayers();
+        
+        for (AbstractPlayer player : onlinePlayers) {
+            try {
+                UUID playerUuid = player.getUuid();
+                
+                // Check if this notification is relevant to this player
+                // For ticket notifications, we might check if they created recent tickets
+                // For now, we'll cache it for all players and let them see it on login
+                
+                // Cache the notification
+                cache.cacheNotification(playerUuid, notification);
+                
+                // Deliver immediately if player is online
+                deliverNotificationToPlayer(playerUuid, notification);
+                
+            } catch (Exception e) {
+                logger.warning("Error handling notification for player " + player.getName() + ": " + e.getMessage());
+            }
+        }
+    }
+    
+    
+    /**
+     * Deliver all pending notifications to a player (called on login)
+     */
+    public void deliverPendingNotifications(UUID playerUuid) {
+        try {
+            List<Cache.PendingNotification> pendingNotifications = cache.getPendingNotifications(playerUuid);
+            
+            if (pendingNotifications.isEmpty()) {
+                return;
+            }
+            
+            logger.info(String.format("Delivering %d pending notifications to player %s", 
+                    pendingNotifications.size(), playerUuid));
+            
+            List<String> deliveredNotificationIds = new ArrayList<>();
+            
+            for (Cache.PendingNotification pending : pendingNotifications) {
+                try {
+                    // Skip expired notifications
+                    if (pending.isExpired()) {
+                        cache.removeNotification(playerUuid, pending.getId());
+                        continue;
+                    }
+                    
+                    // Format and send the notification
+                    String message = formatNotificationMessage(pending);
+                    platform.sendMessage(playerUuid, message);
+                    
+                    // Track for acknowledgment
+                    deliveredNotificationIds.add(pending.getId());
+                    
+                    // Remove from cache
+                    cache.removeNotification(playerUuid, pending.getId());
+                    
+                } catch (Exception e) {
+                    logger.warning("Error delivering pending notification " + pending.getId() + ": " + e.getMessage());
+                }
+            }
+            
+            // Acknowledge all delivered notifications
+            if (!deliveredNotificationIds.isEmpty()) {
+                acknowledgeNotifications(playerUuid, deliveredNotificationIds);
+            }
+            
+        } catch (Exception e) {
+            logger.severe("Error delivering pending notifications: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Format notification message for display
+     */
+    private String formatNotificationMessage(SyncResponse.PlayerNotification notification) {
+        return String.format("§6[MODL] §f%s", notification.getMessage());
+    }
+    
+    /**
+     * Format pending notification message for display
+     */
+    private String formatNotificationMessage(Cache.PendingNotification notification) {
+        return String.format("§6[MODL] §f%s", notification.getMessage());
+    }
+    
+    /**
+     * Acknowledge a single notification to the panel
+     */
+    private void acknowledgeNotification(UUID playerUuid, String notificationId) {
+        acknowledgeNotifications(playerUuid, List.of(notificationId));
+    }
+    
+    /**
+     * Acknowledge multiple notifications to the panel
+     */
+    private void acknowledgeNotifications(UUID playerUuid, List<String> notificationIds) {
+        try {
+            NotificationAcknowledgeRequest request = new NotificationAcknowledgeRequest(
+                    playerUuid.toString(),
+                    notificationIds,
+                    Instant.now().toString()
+            );
+            
+            httpClient.acknowledgeNotifications(request)
+                    .thenAccept(response -> {
+                        logger.info(String.format("Acknowledged %d notifications for player %s", 
+                                notificationIds.size(), playerUuid));
+                    })
+                    .exceptionally(throwable -> {
+                        logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": " + throwable.getMessage());
+                        return null;
+                    });
+                    
+        } catch (Exception e) {
+            logger.severe("Error acknowledging notifications: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     

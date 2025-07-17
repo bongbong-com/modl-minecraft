@@ -42,7 +42,19 @@ public class BungeePlatform implements Platform {
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null && player.isConnected()) {
+            player.sendMessage(message);
+        }
+    }
+    
+    @Override
+    public void sendJsonMessage(UUID uuid, String jsonMessage) {
+        ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
+        if (player != null && player.isConnected()) {
+            // Parse and send JSON message using BungeeCord's ComponentSerializer
+            player.sendMessage(net.md_5.bungee.chat.ComponentSerializer.parse(jsonMessage));
+        }
     }
 
     @Override

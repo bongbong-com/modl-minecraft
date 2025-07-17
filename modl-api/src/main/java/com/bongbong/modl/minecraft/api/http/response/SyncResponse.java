@@ -101,6 +101,10 @@ public class SyncResponse {
         private String type;
         
         private Long timestamp;
+        
+        private String targetPlayerUuid;
+        
+        private java.util.Map<String, Object> data;
     }
     
     @Data

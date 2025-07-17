@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import net.md_5.bungee.chat.ComponentSerializer;
 
 import java.util.Collection;
 import java.util.List;
@@ -39,7 +40,19 @@ public class SpigotPlatform implements Platform {
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            player.sendMessage(message);
+        }
+    }
+    
+    @Override
+    public void sendJsonMessage(UUID uuid, String jsonMessage) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            // Use Spigot's JSON message API
+            player.spigot().sendMessage(ComponentSerializer.parse(jsonMessage));
+        }
     }
 
     @Override

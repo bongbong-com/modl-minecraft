@@ -20,6 +20,7 @@ messages:
   try_again: "&cPlease try again later or contact staff directly."
   unknown_error: "Unknown error"
   no_details: "No additional details provided"
+  no_chat_logs_available: "&cNo recent chat messages found for {player}. Cannot create chat report without chat logs."
 
 # Report GUI Configuration
 report_gui:
@@ -163,3 +164,258 @@ priorities:
   player: "medium"
   bug: "medium"
   support: "low"
+
+# Punishment System Messages
+# Available variables: {player}, {target}, {reason}, {duration}, {type}, {punishment_id}, {issuer}, {punishment_type}, {expiration}, {server}
+punishments:
+  # General punishment messages
+  general:
+    # Permission messages
+    no_permission: "&cYou don't have permission to use this command."
+    no_permission_punishment: "&cYou don't have permission to apply '{type}' punishments."
+    no_permission_reload: "&cYou don't have permission to reload punishment data."
+    
+    # Error messages
+    player_not_found: "&cPlayer not found."
+    punishment_error: "&cError creating punishment: {error}"
+    punishment_types_not_loaded: "&cPunishment types not loaded. Try &f/modl reload&c or contact an administrator."
+    invalid_punishment_type: "&cInvalid punishment type. Available types: {types}"
+    invalid_duration: "&cInvalid duration format. Examples: 1d, 2h, 30m, 1w"
+    cannot_punish_self: "&cYou cannot punish yourself."
+    target_immune: "&cYou cannot punish {target} as they have immunity."
+    
+    # Success messages
+    punishment_issued: "&aSuccessfully issued {type} for &f{target}&a."
+    punishment_issued_duration: "&aSuccessfully issued {type} for &f{target}&a ({duration})."
+    
+    # Staff notifications
+    staff_notification: "&7&o[{issuer}: created {type} for {target}&7&o]"
+    
+    # Reload messages
+    reloading: "&eReloading punishment types and staff permissions..."
+    reload_success_types: "&aSuccessfully refreshed {count} punishment types."
+    reload_success_permissions: "&aSuccessfully loaded permissions for {count} staff members."
+    reload_error: "&cError reloading: {error}"
+
+  # Punishment type validation messages
+  validation:
+    single_severity_error: "&cCannot set severity on single-severity punishment type '{type}'. This punishment type has only one severity level."
+    permanent_skin_change_error: "&cCannot set severity on permanent until skin change punishment type '{type}'."
+    permanent_name_change_error: "&cCannot set severity on permanent until name change punishment type '{type}'."
+    alt_blocking_not_supported: "&cAlt-blocking flag is not supported for punishment type '{type}'."
+    stat_wiping_not_supported: "&cStat-wiping flag is not supported for punishment type '{type}'."
+
+  # Public punishment notifications (shown to all players)
+  public_notifications:
+    # Default messages - can be overridden per punishment type
+    default:
+      kick: "&c{target} has been kicked from the network."
+      mute: "&c{target} has been muted."
+      ban: "&c{target} has been banned from the network."
+      blacklist: "&c{target} has been blacklisted from the network."
+      security_ban: "&c{target} has been security banned from the network."
+      linked_ban: "&c{target} has been linked banned from the network."
+      manual_mute: "&c{target} has been muted."
+      manual_ban: "&c{target} has been banned from the network."
+      
+    # Temporary punishment notifications
+    temporary:
+      kick: "&c{target} has been kicked from the network."
+      mute: "&c{target} has been muted for {duration}."
+      ban: "&c{target} has been banned for {duration}."
+      manual_mute: "&c{target} has been muted for {duration}."
+      manual_ban: "&c{target} has been banned for {duration}."
+      
+    # Permanent punishment notifications  
+    permanent:
+      mute: "&c{target} has been permanently muted."
+      ban: "&c{target} has been permanently banned."
+      blacklist: "&c{target} has been blacklisted from the network."
+      security_ban: "&c{target} has been security banned from the network."
+      linked_ban: "&c{target} has been linked banned from the network."
+      manual_mute: "&c{target} has been permanently muted."
+      manual_ban: "&c{target} has been permanently banned."
+
+  # Player punishment notifications (shown to the punished player)
+  player_notifications:
+    kick:
+      message: "&cYou have been kicked from the server."
+      reason: "&cReason: &f{reason}"
+      appeal: "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+    mute:
+      temporary: "&cYou have been muted for {duration}."
+      permanent: "&cYou have been permanently muted."
+      reason: "&cReason: &f{reason}"
+      expiration: "&7Your mute expires: &f{expiration}"
+      appeal: "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+    ban:
+      temporary: "&cYou have been banned for {duration}."
+      permanent: "&cYou have been permanently banned."
+      reason: "&cReason: &f{reason}"
+      expiration: "&7Your ban expires: &f{expiration}"
+      appeal: "&7If you believe this is an error, you can appeal at: &b{appeal_url}"
+      
+    blacklist:
+      message: "&cYou have been blacklisted from this network."
+      reason: "&cReason: &f{reason}"
+      permanent: "&cThis is a permanent punishment."
+      
+    security_ban:
+      message: "&cYou have been security banned for account security."
+      reason: "&cReason: &f{reason}"
+      contact: "&7Please contact staff for assistance."
+      
+    linked_ban:
+      message: "&cYou have been banned due to a linked account violation."
+      reason: "&cReason: &f{reason}"
+      linked_info: "&7This ban is linked to another account."
+
+# Punishment Type Specific Messages
+# These can override the default messages above for specific punishment types
+# Format: punishment_types.ordinal_<ordinal_number>
+# Manual punishment types (ordinals 0-5):
+#   0: Kick, 1: Manual Mute, 2: Manual Ban, 3: Security Ban, 4: Linked Ban, 5: Blacklist
+# Dynamic punishment types start at ordinal 6+
+punishment_types:
+  # Manual punishment overrides
+  ordinal_0:  # Kick
+    public_notification:
+      default: "&c{target} has been kicked from the server."
+    player_notification:
+      message: "&cYou have been kicked from the server."
+      reason: "&cReason: &f{reason}"
+      
+  ordinal_1:  # Manual Mute
+    public_notification:
+      temporary: "&c{target} has been manually muted for {duration}."
+      permanent: "&c{target} has been permanently muted."
+    player_notification:
+      temporary: "&cYou have been manually muted for {duration}."
+      permanent: "&cYou have been permanently muted."
+      reason: "&cReason: &f{reason}"
+      
+  ordinal_2:  # Manual Ban
+    public_notification:
+      temporary: "&c{target} has been manually banned for {duration}."
+      permanent: "&c{target} has been permanently banned."
+    player_notification:
+      temporary: "&cYou have been manually banned for {duration}."
+      permanent: "&cYou have been permanently banned."
+      reason: "&cReason: &f{reason}"
+      
+  ordinal_3:  # Security Ban
+    public_notification:
+      permanent: "&c{target} has been security banned for account protection."
+    player_notification:
+      message: "&cYou have been security banned for account protection."
+      reason: "&cReason: &f{reason}"
+      contact: "&7Please contact staff if you believe this is an error."
+      
+  ordinal_4:  # Linked Ban
+    public_notification:
+      permanent: "&c{target} has been banned due to account linking violations."
+    player_notification:
+      message: "&cYou have been banned due to account linking violations."
+      reason: "&cReason: &f{reason}"
+      linked_info: "&7This ban is associated with another account."
+      
+  ordinal_5:  # Blacklist
+    public_notification:
+      permanent: "&c{target} has been blacklisted from the network."
+    player_notification:
+      message: "&cYou have been blacklisted from this network."
+      reason: "&cReason: &f{reason}"
+      permanent: "&cThis is a permanent network-wide punishment."
+      
+  # Example dynamic punishment types (ordinal 6+)
+  ordinal_6:  # Example: Chat Spam
+    public_notification:
+      temporary: "&c{target} has been muted for chat spam ({duration})."
+      permanent: "&c{target} has been permanently muted for chat spam."
+    player_notification:
+      temporary: "&cYou have been muted for chat spam for {duration}."
+      permanent: "&cYou have been permanently muted for chat spam."
+      reason: "&cReason: &f{reason}"
+      
+  ordinal_7:  # Example: Inappropriate Language
+    public_notification:
+      temporary: "&c{target} has been muted for inappropriate language ({duration})."
+      permanent: "&c{target} has been permanently muted for inappropriate language."
+    player_notification:
+      temporary: "&cYou have been muted for inappropriate language for {duration}."
+      permanent: "&cYou have been permanently muted for inappropriate language."
+      reason: "&cReason: &f{reason}"
+      
+  ordinal_8:  # Example: Griefing
+    public_notification:
+      temporary: "&c{target} has been banned for griefing ({duration})."
+      permanent: "&c{target} has been permanently banned for griefing."
+    player_notification:
+      temporary: "&cYou have been banned for griefing for {duration}."
+      permanent: "&cYou have been permanently banned for griefing."
+      reason: "&cReason: &f{reason}"
+
+# Manual command messages
+commands:
+  # Existing report commands...
+  report:
+    description: "Report a player - opens a GUI with customizable options"
+    usage: "/report <player> [reason]"
+    
+  chatreport:
+    description: "Report a player for inappropriate chat and save chat logs"
+    usage: "/chatreport <player> [reason]"
+    
+  bugreport:
+    description: "Report a bug - creates an unfinished report with a form link"
+    usage: "/bugreport <title>"
+    
+  support:
+    description: "Request support - creates an unfinished request with a form link"
+    usage: "/support <title>"
+    
+  # New punishment commands
+  punish:
+    description: "Issue a dynamic punishment based on player history"
+    usage: "/punish <player> <type> [reason...] [flags]"
+    
+  ban:
+    description: "Ban a player from the server"
+    usage: "/ban <player> [duration] [reason...] [flags]"
+    
+  mute:
+    description: "Mute a player"
+    usage: "/mute <player> [duration] [reason...] [flags]"
+    
+  kick:
+    description: "Kick a player from the server"
+    usage: "/kick <player> [reason...] [flags]"
+    
+  blacklist:
+    description: "Blacklist a player from the network"
+    usage: "/blacklist <player> [reason...] [flags]"
+    
+  modl:
+    reload:
+      description: "Reload punishment types and staff permissions"
+      usage: "/modl reload"
+
+# Configuration
+config:
+  appeal_url: "https://appeals.example.com"
+  default_reason: "No reason specified"
+  date_format: "MMM dd, yyyy 'at' HH:mm"
+  duration_format:
+    days: "{days}d"
+    hours: "{hours}h" 
+    minutes: "{minutes}m"
+    seconds: "{seconds}s"
+    permanent: "permanent"
+
+# Notifications
+notification:
+  ticket_reply: "&6[Ticket] &f{message}"
+  ticket_reply_with_link: "&6[Ticket] &f{message} &b[Click to view]"
+  ticket_click_action: "&7Click to view ticket {ticketId}"

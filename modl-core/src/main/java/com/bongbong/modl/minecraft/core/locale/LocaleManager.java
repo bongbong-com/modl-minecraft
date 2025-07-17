@@ -6,9 +6,12 @@ import lombok.Getter;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class LocaleManager {
     
@@ -199,6 +202,193 @@ public class LocaleManager {
     
     private String colorize(String message) {
         return message.replace("&", "§");
+    }
+    
+    // ==================== PUNISHMENT SYSTEM METHODS ====================
+    
+    /**
+     * Get a punishment message with variable replacement
+     */
+    public String getPunishmentMessage(String path, Map<String, String> variables) {
+        Map<String, String> allVariables = new HashMap<>(variables);
+        
+        // Add config variables
+        allVariables.putIfAbsent("appeal_url", getMessage("config.appeal_url"));
+        allVariables.putIfAbsent("default_reason", getMessage("config.default_reason"));
+        
+        return getMessage("punishments." + path, allVariables);
+    }
+    
+    /**
+     * Get a punishment message with builder pattern for common variables
+     */
+    public PunishmentMessageBuilder punishment() {
+        return new PunishmentMessageBuilder(this);
+    }
+    
+    /**
+     * Get punishment type specific message by ordinal, falling back to default
+     */
+    public String getPunishmentTypeMessage(int ordinal, String messagePath, Map<String, String> variables) {
+        // Try punishment type specific message first using ordinal
+        String specificPath = "punishment_types.ordinal_" + ordinal + "." + messagePath;
+        Object specificValue = getNestedValue(messages, specificPath);
+        
+        if (specificValue instanceof String) {
+            return getMessage(specificPath, variables);
+        }
+        
+        // Fall back to default punishment message
+        return getPunishmentMessage(messagePath, variables);
+    }
+    
+    /**
+     * Get punishment type specific message by name (deprecated - use ordinal version)
+     * @deprecated Use getPunishmentTypeMessage(int ordinal, String messagePath, Map<String, String> variables) instead
+     */
+    @Deprecated
+    public String getPunishmentTypeMessage(String punishmentTypeName, String messagePath, Map<String, String> variables) {
+        String normalizedTypeName = normalizeTypeName(punishmentTypeName);
+        
+        // Try punishment type specific message first
+        String specificPath = "punishment_types." + normalizedTypeName + "." + messagePath;
+        Object specificValue = getNestedValue(messages, specificPath);
+        
+        if (specificValue instanceof String) {
+            return getMessage(specificPath, variables);
+        }
+        
+        // Fall back to default punishment message
+        return getPunishmentMessage(messagePath, variables);
+    }
+    
+    /**
+     * Format duration in a human-readable way
+     */
+    public String formatDuration(long durationMs) {
+        if (durationMs <= 0) {
+            return getMessage("config.duration_format.permanent");
+        }
+        
+        long days = TimeUnit.MILLISECONDS.toDays(durationMs);
+        long hours = TimeUnit.MILLISECONDS.toHours(durationMs) % 24;
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMs) % 60;
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMs) % 60;
+        
+        StringBuilder duration = new StringBuilder();
+        
+        if (days > 0) {
+            duration.append(getMessage("config.duration_format.days", Map.of("days", String.valueOf(days))));
+        }
+        if (hours > 0) {
+            if (duration.length() > 0) duration.append(" ");
+            duration.append(getMessage("config.duration_format.hours", Map.of("hours", String.valueOf(hours))));
+        }
+        if (minutes > 0) {
+            if (duration.length() > 0) duration.append(" ");
+            duration.append(getMessage("config.duration_format.minutes", Map.of("minutes", String.valueOf(minutes))));
+        }
+        if (seconds > 0 && duration.length() == 0) {
+            duration.append(getMessage("config.duration_format.seconds", Map.of("seconds", String.valueOf(seconds))));
+        }
+        
+        return duration.toString();
+    }
+    
+    /**
+     * Format expiration date
+     */
+    public String formatExpiration(Date expiration) {
+        String format = getMessage("config.date_format");
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+            return dateFormat.format(expiration);
+        } catch (Exception e) {
+            return expiration.toString();
+        }
+    }
+    
+    /**
+     * Normalize punishment type name for config lookup
+     */
+    private String normalizeTypeName(String typeName) {
+        return typeName.toLowerCase().replace(" ", "_").replace("-", "_");
+    }
+    
+    /**
+     * Builder class for punishment messages
+     */
+    public static class PunishmentMessageBuilder {
+        private final LocaleManager localeManager;
+        private final Map<String, String> variables;
+        
+        public PunishmentMessageBuilder(LocaleManager localeManager) {
+            this.localeManager = localeManager;
+            this.variables = new HashMap<>();
+        }
+        
+        public PunishmentMessageBuilder target(String target) {
+            variables.put("target", target);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder player(String player) {
+            variables.put("player", player);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder issuer(String issuer) {
+            variables.put("issuer", issuer);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder reason(String reason) {
+            variables.put("reason", reason);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder type(String type) {
+            variables.put("type", type);
+            variables.put("punishment_type", type);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder duration(long durationMs) {
+            variables.put("duration", localeManager.formatDuration(durationMs));
+            return this;
+        }
+        
+        public PunishmentMessageBuilder expiration(Date expiration) {
+            variables.put("expiration", localeManager.formatExpiration(expiration));
+            return this;
+        }
+        
+        public PunishmentMessageBuilder punishmentId(String punishmentId) {
+            variables.put("punishment_id", punishmentId);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder server(String server) {
+            variables.put("server", server);
+            return this;
+        }
+        
+        public PunishmentMessageBuilder variable(String key, String value) {
+            variables.put(key, value);
+            return this;
+        }
+        
+        public String get(String path) {
+            return localeManager.getPunishmentMessage(path, variables);
+        }
+        
+        public String getForType(String punishmentTypeName, String path) {
+            return localeManager.getPunishmentTypeMessage(punishmentTypeName, path, variables);
+        }
+        
+        public String getForOrdinal(int ordinal, String path) {
+            return localeManager.getPunishmentTypeMessage(ordinal, path, variables);
+        }
     }
     
     public static class ReportCategory {

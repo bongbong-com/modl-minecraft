@@ -7,9 +7,11 @@ import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLoginResponse;
+import com.bongbong.modl.minecraft.api.http.response.SyncResponse;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.service.ChatMessageCache;
+import com.bongbong.modl.minecraft.core.sync.SyncService;
 import com.bongbong.modl.minecraft.core.util.IpApiClient;
 import com.bongbong.modl.minecraft.core.util.PunishmentMessages;
 import com.google.gson.JsonObject;
@@ -24,6 +26,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
@@ -34,6 +37,7 @@ public class JoinListener {
     private final Logger logger;
     private final ChatMessageCache chatMessageCache;
     private final Platform platform;
+    private final SyncService syncService;
 
     @Subscribe
     public void onLogin(LoginEvent event) {
@@ -101,6 +105,19 @@ public class JoinListener {
                     logger.info(String.format("Cached active mute for %s: %s", 
                             event.getPlayer().getUsername(), mute.getDescription()));
                 }
+                
+                // Process pending notifications from login response
+                if (response.hasNotifications()) {
+                    for (Map<String, Object> notificationData : response.getPendingNotifications()) {
+                        // Convert map to PlayerNotification and cache for delivery on join
+                        SyncResponse.PlayerNotification notification = mapToPlayerNotification(notificationData);
+                        if (notification != null) {
+                            // Cache notification for immediate delivery on post-login
+                            cache.cacheNotification(event.getPlayer().getUniqueId(), notification);
+                        }
+                    }
+                }
+                
                 event.setResult(ResultedEvent.ComponentResult.allowed());
                 
                 logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
@@ -115,7 +132,8 @@ public class JoinListener {
 
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
-        // Additional processing after successful login if needed
+        // Deliver pending notifications
+        syncService.deliverPendingNotifications(event.getPlayer().getUniqueId());
     }
 
     @Subscribe
@@ -161,6 +179,35 @@ public class JoinListener {
             });
         } catch (Exception e) {
             logger.error("Error acknowledging ban enforcement for punishment " + ban.getId(), e);
+        }
+    }
+    
+    /**
+     * Convert a map from the login response to a PlayerNotification object
+     */
+    private SyncResponse.PlayerNotification mapToPlayerNotification(Map<String, Object> data) {
+        try {
+            SyncResponse.PlayerNotification notification = new SyncResponse.PlayerNotification();
+            notification.setId((String) data.get("id"));
+            notification.setMessage((String) data.get("message"));
+            notification.setType((String) data.get("type"));
+            
+            if (data.get("timestamp") instanceof Number) {
+                notification.setTimestamp(((Number) data.get("timestamp")).longValue());
+            }
+            
+            notification.setTargetPlayerUuid((String) data.get("targetPlayerUuid"));
+            
+            // Handle nested data map
+            Object nestedData = data.get("data");
+            if (nestedData instanceof Map) {
+                notification.setData((Map<String, Object>) nestedData);
+            }
+            
+            return notification;
+        } catch (Exception e) {
+            logger.warn("Failed to convert notification data: " + e.getMessage());
+            return null;
         }
     }
 }

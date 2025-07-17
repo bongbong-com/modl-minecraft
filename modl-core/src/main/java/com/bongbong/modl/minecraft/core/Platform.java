@@ -15,6 +15,7 @@ public interface Platform {
     void staffBroadcast(String string);
     void disconnect(UUID uuid, String message);
     void sendMessage(UUID uuid, String message);
+    void sendJsonMessage(UUID uuid, String jsonMessage);
     boolean isOnline(UUID uuid);
     CommandManager<?,?,?,?,?,?> getCommandManager();
     AbstractPlayer getAbstractPlayer(UUID uuid, boolean queryMojang);

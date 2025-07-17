@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @AllArgsConstructor
@@ -13,7 +14,7 @@ import java.util.List;
 public class PlayerLoginResponse {
     private int status;
     private List<SimplePunishment> activePunishments;
-    private List<String> pendingNotifications;
+    private List<Map<String, Object>> pendingNotifications;
     
     public boolean hasActiveBan() {
         return activePunishments != null && activePunishments.stream().anyMatch(SimplePunishment::isBan);
