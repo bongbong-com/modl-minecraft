@@ -41,7 +41,7 @@ public class TicketCommands extends BaseCommand {
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
             reporter.username(),
-            "report",
+            "player",
             "Player Report: " + targetPlayer.username(),
             "Reported player: " + targetPlayer.username() + "\nReason: " + reason,
             targetPlayer.uuid().toString(),
@@ -78,13 +78,13 @@ public class TicketCommands extends BaseCommand {
         CreateTicketRequest request = new CreateTicketRequest(
             reporter.uuid().toString(),
             reporter.username(),
-            "chat_report",
+            "chat",
             "Chat Report: " + targetPlayer.username(),
             "Chat violation report for: " + targetPlayer.username() + "\nAutomatic chat log capture included.",
             targetPlayer.uuid().toString(),
             targetPlayer.username(),
             chatLogs,
-            List.of("chat", "report"),
+            List.of(),
             "normal"
         );
         
@@ -99,13 +99,13 @@ public class TicketCommands extends BaseCommand {
         CreateTicketRequest request = new CreateTicketRequest(
             applicant.uuid().toString(),
             applicant.username(),
-            "application",
-            "Staff Application: " + applicant.username(),
+            "staff",
+            "Application: " + applicant.username(),
             null, // description will be filled in form
             null,
             null,
             null,
-            List.of("application", "staff"),
+            List.of(),
             "normal"
         );
         
@@ -127,7 +127,7 @@ public class TicketCommands extends BaseCommand {
             null,
             null,
             null,
-            List.of("bug"),
+            List.of(),
             "normal"
         );
         
@@ -149,7 +149,7 @@ public class TicketCommands extends BaseCommand {
             null,
             null,
             null,
-            List.of("support"),
+            List.of(),
             "normal"
         );
         
@@ -166,7 +166,7 @@ public class TicketCommands extends BaseCommand {
                 sender.sendMessage(localeManager.getMessage("messages.success", Map.of("type", ticketType)));
                 sender.sendMessage(localeManager.getMessage("messages.ticket_id", Map.of("ticketId", response.getTicketId())));
                 
-                String ticketUrl = panelUrl + "/tickets/" + response.getTicketId();
+                String ticketUrl = panelUrl + "/ticket/" + response.getTicketId();
                 sendClickableTicketMessage(sender, localeManager.getMessage("messages.view_ticket_label"), ticketUrl, response.getTicketId());
                 sender.sendMessage(localeManager.getMessage("messages.evidence_note"));
             } else {
