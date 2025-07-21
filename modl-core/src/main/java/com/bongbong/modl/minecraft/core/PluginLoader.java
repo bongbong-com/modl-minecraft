@@ -76,7 +76,8 @@ public class PluginLoader {
         commandManager.registerCommand(new TicketCommands(platform, httpManager.getHttpClient(), Constants.PANEL_URL, localeManager, chatMessageCache));
         
         // Register player lookup command
-        commandManager.registerCommand(new PlayerLookupCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        PlayerLookupCommand playerLookupCommand = new PlayerLookupCommand(httpManager.getHttpClient(), platform, cache, localeManager, Constants.PANEL_URL);
+        commandManager.registerCommand(playerLookupCommand);
         
         // Register punishment command with tab completion
         PunishCommand punishCommand = new PunishCommand(httpManager.getHttpClient(), platform, cache, localeManager);
@@ -90,11 +91,22 @@ public class PluginLoader {
         // Initialize punishment types cache
         punishCommand.initializePunishmentTypes();
         
+        // Initialize punishment types cache for player lookup
+        playerLookupCommand.initializePunishmentTypes();
+        
+        // Register reload command
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.ModlReloadCommand(
+            httpManager.getHttpClient(), platform, cache, localeManager, punishCommand, playerLookupCommand));
+        
         // Register manual punishment commands
         commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.BanCommand(httpManager.getHttpClient(), platform, cache, localeManager));
         commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.MuteCommand(httpManager.getHttpClient(), platform, cache, localeManager));
         commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.KickCommand(httpManager.getHttpClient(), platform, cache, localeManager));
         commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.BlacklistCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.punishments.PardonCommand(httpManager.getHttpClient(), platform, cache, localeManager));
+        
+        // Register player commands
+        commandManager.registerCommand(new com.bongbong.modl.minecraft.core.impl.commands.player.IAmMutedCommand(platform, cache, localeManager));
     }
 
     public static AbstractPlayer fetchPlayer(String target, Platform platform, ModlHttpClient httpClient) {

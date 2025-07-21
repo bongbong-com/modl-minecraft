@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.bungee;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
@@ -84,8 +85,14 @@ public class BungeeListener implements Listener {
                     acknowledgeBanEnforcement(ban, event.getConnection().getUniqueId().toString());
                 }
             }
+        } catch (PanelUnavailableException e) {
+            // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
+            platform.getLogger().warning("Panel 502 during login check for " + event.getConnection().getName() + " - blocking login for safety");
+            TextComponent errorMessage = new TextComponent("Unable to verify ban status. Login temporarily restricted for safety.");
+            event.setCancelReason(errorMessage);
+            event.setCancelled(true);
         } catch (Exception e) {
-            // On error, allow login but log warning
+            // On other errors, allow login but log warning
             platform.getLogger().severe("Failed to check punishments for " + event.getConnection().getName() + ": " + e.getMessage());
         }
     }
@@ -173,7 +180,9 @@ public class BungeeListener implements Listener {
                 } else {
                     muteMessage = "§cYou are muted!";
                 }
-                sender.sendMessage(new TextComponent(muteMessage));
+                // Handle both escaped newlines and literal \n sequences
+                String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
+                sender.sendMessage(new TextComponent(formattedMessage));
             }
         }
     }

@@ -4,6 +4,7 @@ import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.NotificationAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
 import com.bongbong.modl.minecraft.api.http.request.SyncRequest;
@@ -21,6 +22,7 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -128,21 +130,25 @@ public class SyncService {
                 logger.info("Diagnostic: API connectivity test PASSED");
                 logger.info("Diagnostic: Server response timestamp: " + response.getTimestamp());
             }).exceptionally(throwable -> {
-                logger.severe("Diagnostic: API connectivity test FAILED: " + throwable.getMessage());
-                if (throwable.getMessage().contains("502")) {
-                    logger.severe("Diagnostic: 502 Bad Gateway indicates the API server is unreachable");
-                    logger.severe("Diagnostic: This usually means:");
-                    logger.severe("Diagnostic:   1. The panel server (123.cobl.gg) is down");
-                    logger.severe("Diagnostic:   2. The reverse proxy/load balancer is misconfigured");
-                    logger.severe("Diagnostic:   3. The API endpoint URL is incorrect");
-                    logger.severe("Diagnostic: Expected sync endpoint: " + Constants.API_URL + "/sync");
-                    logger.severe("Diagnostic: Check if you can access " + Constants.PANEL_URL + " in a web browser");
-                } else if (throwable.getMessage().contains("401") || throwable.getMessage().contains("403")) {
-                    logger.severe("Diagnostic: Authentication failed - API key may be invalid");
-                } else if (throwable.getMessage().contains("404")) {
-                    logger.severe("Diagnostic: Endpoint not found - the sync endpoint may not exist");
-                } else if (throwable.getMessage().contains("ConnectException") || throwable.getMessage().contains("UnknownHostException")) {
-                    logger.severe("Diagnostic: Network connectivity issue - cannot reach " + Constants.PANEL_URL);
+                if (throwable.getCause() instanceof PanelUnavailableException) {
+                    logger.warning("Diagnostic: Panel is temporarily unavailable (502 error) - likely restarting");
+                } else {
+                    logger.severe("Diagnostic: API connectivity test FAILED: " + throwable.getMessage());
+                    if (throwable.getMessage().contains("502")) {
+                        logger.severe("Diagnostic: 502 Bad Gateway indicates the API server is unreachable");
+                        logger.severe("Diagnostic: This usually means:");
+                        logger.severe("Diagnostic:   1. The panel server (123.cobl.gg) is down");
+                        logger.severe("Diagnostic:   2. The reverse proxy/load balancer is misconfigured");
+                        logger.severe("Diagnostic:   3. The API endpoint URL is incorrect");
+                        logger.severe("Diagnostic: Expected sync endpoint: " + Constants.API_URL + "/sync");
+                        logger.severe("Diagnostic: Check if you can access " + Constants.PANEL_URL + " in a web browser");
+                    } else if (throwable.getMessage().contains("401") || throwable.getMessage().contains("403")) {
+                        logger.severe("Diagnostic: Authentication failed - API key may be invalid");
+                    } else if (throwable.getMessage().contains("404")) {
+                        logger.severe("Diagnostic: Endpoint not found - the sync endpoint may not exist");
+                    } else if (throwable.getMessage().contains("ConnectException") || throwable.getMessage().contains("UnknownHostException")) {
+                        logger.severe("Diagnostic: Network connectivity issue - cannot reach " + Constants.PANEL_URL);
+                    }
                 }
                 return null;
             });
@@ -213,7 +219,11 @@ public class SyncService {
                     e.printStackTrace();
                 }
             }).exceptionally(throwable -> {
-                logger.warning("Sync request failed: " + throwable.getMessage());
+                if (throwable.getCause() instanceof PanelUnavailableException) {
+                    logger.warning("Sync request failed: Panel temporarily unavailable (502 error)");
+                } else {
+                    logger.warning("Sync request failed: " + throwable.getMessage());
+                }
                 return null;
             });
             
@@ -362,7 +372,7 @@ public class SyncService {
             cache.cacheMute(uuid, punishment);
             
             // Broadcast punishment
-            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted");
+            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "muted", localeManager);
             platform.broadcast(broadcastMessage);
             
             logger.info(String.format("Successfully executed mute for %s: %s", username, punishment.getDescription()));
@@ -381,12 +391,19 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                String kickMsg = String.format("You have been banned: %s", punishment.getDescription());
+                // Use proper ban message from punishment types (ordinal 2)
+                Map<String, String> variables = new HashMap<>();
+                variables.put("target", "You");
+                variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+                variables.put("duration", punishment.isPermanent() ? "permanent" : PunishmentMessages.formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
+                variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+                
+                String kickMsg = localeManager.getPlayerNotificationMessage(2, variables);
                 platform.kickPlayer(player, kickMsg);
             }
             
             // Broadcast punishment
-            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned");
+            String broadcastMessage = PunishmentMessages.formatPunishmentBroadcast(username, punishment, "banned", localeManager);
             platform.broadcast(broadcastMessage);
             
             logger.info(String.format("Successfully executed ban for %s: %s", username, punishment.getDescription()));
@@ -405,7 +422,8 @@ public class SyncService {
             // Kick player if online
             AbstractPlayer player = platform.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                String kickMsg = String.format("You have been kicked: %s", punishment.getDescription());
+                // Use proper kick message formatting
+                String kickMsg = PunishmentMessages.formatKickMessage(punishment, localeManager);
                 platform.kickPlayer(player, kickMsg);
                 
                 logger.info(String.format("Successfully executed kick for %s: %s", username, punishment.getDescription()));
@@ -486,7 +504,11 @@ public class SyncService {
                             punishmentId, success ? "SUCCESS" : "FAILED"));
                 })
                 .exceptionally(throwable -> {
-                    logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
+                    if (throwable.getCause() instanceof PanelUnavailableException) {
+                        logger.warning("Failed to acknowledge punishment " + punishmentId + ": Panel temporarily unavailable");
+                    } else {
+                        logger.warning("Failed to acknowledge punishment " + punishmentId + ": " + throwable.getMessage());
+                    }
                     return null;
                 });
     }
@@ -645,32 +667,26 @@ public class SyncService {
                 return;
             }
             
+            // Create a copy of the list to avoid ConcurrentModificationException
+            List<Cache.PendingNotification> notificationsToProcess = new ArrayList<>(pendingNotifications);
+            
             logger.info(String.format("Delivering %d pending notifications to player %s", 
-                    pendingNotifications.size(), playerUuid));
+                    notificationsToProcess.size(), playerUuid));
             
             List<String> deliveredNotificationIds = new ArrayList<>();
+            List<String> expiredNotificationIds = new ArrayList<>();
             
-            for (Cache.PendingNotification pending : pendingNotifications) {
-                try {
-                    // Skip expired notifications
-                    if (pending.isExpired()) {
-                        cache.removeNotification(playerUuid, pending.getId());
-                        continue;
-                    }
-                    
-                    // Format and send the notification
-                    String message = formatNotificationMessage(pending);
-                    platform.sendMessage(playerUuid, message);
-                    
-                    // Track for acknowledgment
-                    deliveredNotificationIds.add(pending.getId());
-                    
-                    // Remove from cache
-                    cache.removeNotification(playerUuid, pending.getId());
-                    
-                } catch (Exception e) {
-                    logger.warning("Error delivering pending notification " + pending.getId() + ": " + e.getMessage());
-                }
+            // Deliver notifications with delays and sound effects
+            deliverNotificationsWithDelay(playerUuid, notificationsToProcess, deliveredNotificationIds, expiredNotificationIds);
+            
+            // Remove all expired notifications in batch
+            for (String expiredId : expiredNotificationIds) {
+                cache.removeNotification(playerUuid, expiredId);
+            }
+            
+            // Remove all delivered notifications in batch
+            for (String deliveredId : deliveredNotificationIds) {
+                cache.removeNotification(playerUuid, deliveredId);
             }
             
             // Acknowledge all delivered notifications
@@ -688,14 +704,163 @@ public class SyncService {
      * Format notification message for display
      */
     private String formatNotificationMessage(SyncResponse.PlayerNotification notification) {
-        return String.format("§6[MODL] §f%s", notification.getMessage());
+        return localeManager.getMessage("notification.modl_prefix", Map.of("message", notification.getMessage()));
     }
     
     /**
      * Format pending notification message for display
      */
     private String formatNotificationMessage(Cache.PendingNotification notification) {
-        return String.format("§6[MODL] §f%s", notification.getMessage());
+        return localeManager.getMessage("notification.ticket_prefix", Map.of("message", notification.getMessage()));
+    }
+    
+    /**
+     * Deliver a pending notification to a player with clickable links for ticket notifications
+     */
+    private void deliverPendingNotificationToPlayer(UUID playerUuid, Cache.PendingNotification pending) {
+        AbstractPlayer player = platform.getPlayer(playerUuid);
+        
+        if (player != null && player.isOnline()) {
+            // Check if we have ticket data for clickable messages
+            Map<String, Object> data = pending.getData();
+            if (data != null && data.containsKey("ticketUrl")) {
+                String ticketUrl = (String) data.get("ticketUrl");
+                String ticketId = (String) data.get("ticketId");
+                
+                // Create a clickable message format similar to sync notifications
+                String message = String.format(
+                    "{\"text\":\"\",\"extra\":[" +
+                    "{\"text\":\"[Ticket] \",\"color\":\"gold\"}," +
+                    "{\"text\":\"%s \",\"color\":\"white\"}," +
+                    "{\"text\":\"[Click to view]\",\"color\":\"aqua\",\"underlined\":true," +
+                    "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
+                    "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view ticket %s\"}}]}",
+                    pending.getMessage().replace("\"", "\\\""), ticketUrl, ticketId
+                );
+                
+                platform.runOnMainThread(() -> {
+                    platform.sendJsonMessage(playerUuid, message);
+                });
+            } else {
+                // Fallback to regular message format
+                String message = formatNotificationMessage(pending);
+                platform.runOnMainThread(() -> {
+                    platform.sendMessage(playerUuid, message);
+                });
+            }
+        }
+    }
+    
+    /**
+     * Deliver notifications with delays and sound effects for login
+     */
+    private void deliverNotificationsWithDelay(UUID playerUuid, List<Cache.PendingNotification> notifications, 
+                                             List<String> deliveredIds, List<String> expiredIds) {
+        if (notifications.isEmpty()) {
+            return;
+        }
+        
+        // Start delivery after initial delay (2 seconds after login)
+        syncExecutor.schedule(() -> {
+            platform.runOnMainThread(() -> {
+                deliverNotificationAtIndex(playerUuid, notifications, 0, deliveredIds, expiredIds);
+            });
+        }, 2000, TimeUnit.MILLISECONDS);
+    }
+    
+    /**
+     * Recursively deliver notifications with delays between each one
+     */
+    private void deliverNotificationAtIndex(UUID playerUuid, List<Cache.PendingNotification> notifications, 
+                                          int index, List<String> deliveredIds, List<String> expiredIds) {
+        if (index >= notifications.size()) {
+            // All notifications processed, clean up
+            finalizePendingNotificationDelivery(playerUuid, deliveredIds, expiredIds);
+            return;
+        }
+        
+        Cache.PendingNotification pending = notifications.get(index);
+        
+        try {
+            // Skip expired notifications
+            if (pending.isExpired()) {
+                expiredIds.add(pending.getId());
+            } else {
+                // Check if player is still online before delivering
+                AbstractPlayer player = platform.getPlayer(playerUuid);
+                if (player != null && player.isOnline()) {
+                    // Play notification sound effect (placeholder for now)
+                    playNotificationSound(playerUuid);
+                    
+                    // Format and send the notification (with clickable links for ticket notifications)
+                    deliverPendingNotificationToPlayer(playerUuid, pending);
+                    
+                    // Track for acknowledgment and removal
+                    deliveredIds.add(pending.getId());
+                    
+                    logger.info(String.format("Delivered pending notification %s to player %s", 
+                            pending.getId(), playerUuid));
+                } else {
+                    // Player disconnected, stop delivery
+                    logger.info(String.format("Player %s disconnected during notification delivery", playerUuid));
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Error delivering pending notification " + pending.getId() + ": " + e.getMessage());
+        }
+        
+        // Schedule next notification delivery with delay (1.5 seconds between notifications)
+        syncExecutor.schedule(() -> {
+            platform.runOnMainThread(() -> {
+                deliverNotificationAtIndex(playerUuid, notifications, index + 1, deliveredIds, expiredIds);
+            });
+        }, 1500, TimeUnit.MILLISECONDS);
+    }
+    
+    /**
+     * Finalize the pending notification delivery by cleaning up and acknowledging
+     */
+    private void finalizePendingNotificationDelivery(UUID playerUuid, List<String> deliveredIds, List<String> expiredIds) {
+        try {
+            // Remove all expired notifications in batch
+            for (String expiredId : expiredIds) {
+                cache.removeNotification(playerUuid, expiredId);
+            }
+            
+            // Remove all delivered notifications in batch
+            for (String deliveredId : deliveredIds) {
+                cache.removeNotification(playerUuid, deliveredId);
+            }
+            
+            // Acknowledge all delivered notifications
+            if (!deliveredIds.isEmpty()) {
+                acknowledgeNotifications(playerUuid, deliveredIds);
+            }
+            
+            logger.info(String.format("Completed pending notification delivery for player %s. " +
+                    "Delivered: %d, Expired: %d", playerUuid, deliveredIds.size(), expiredIds.size()));
+                    
+        } catch (Exception e) {
+            logger.severe("Error finalizing pending notification delivery: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Play notification sound effect (placeholder - to be implemented per platform)
+     */
+    private void playNotificationSound(UUID playerUuid) {
+        // TODO: Implement sound playing per platform
+        // For now, this is a placeholder that can be extended in platform implementations
+        // Example sounds: "entity.experience_orb.pickup", "block.note_block.pling", "entity.player.levelup"
+        
+        // This could be implemented by:
+        // 1. Adding a playSound method to the Platform interface
+        // 2. Implementing it in each platform (Spigot, Velocity, BungeeCord)
+        // 3. Using the appropriate platform-specific sound API
+        
+        logger.fine("Playing notification sound for player " + playerUuid + " (placeholder)");
     }
     
     /**
@@ -722,7 +887,11 @@ public class SyncService {
                                 notificationIds.size(), playerUuid));
                     })
                     .exceptionally(throwable -> {
-                        logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": " + throwable.getMessage());
+                        if (throwable.getCause() instanceof PanelUnavailableException) {
+                            logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": Panel temporarily unavailable");
+                        } else {
+                            logger.warning("Failed to acknowledge notifications for player " + playerUuid + ": " + throwable.getMessage());
+                        }
                         return null;
                     });
                     

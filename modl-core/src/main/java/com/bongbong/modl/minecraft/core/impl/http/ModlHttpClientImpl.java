@@ -1,6 +1,7 @@
 package com.bongbong.modl.minecraft.core.impl.http;
 
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.*;
 import com.bongbong.modl.minecraft.api.http.response.*;
 import com.google.gson.Gson;
@@ -277,22 +278,37 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                             throw new RuntimeException("Failed to parse response: " + e.getMessage(), e);
                         }
                     } else {
-                        String errorMsg = String.format("Request failed with status code %d: %s", 
-                                response.statusCode(), response.body());
+                        // Try to extract error message from JSON response
+                        String errorMessage;
+                        try {
+                            // Attempt to parse JSON error response
+                            com.google.gson.JsonObject errorResponse = gson.fromJson(response.body(), com.google.gson.JsonObject.class);
+                            if (errorResponse != null && errorResponse.has("message")) {
+                                errorMessage = errorResponse.get("message").getAsString();
+                            } else {
+                                errorMessage = String.format("Request failed with status code %d: %s", 
+                                        response.statusCode(), response.body());
+                            }
+                        } catch (Exception e) {
+                            // If JSON parsing fails, use the raw response
+                            errorMessage = String.format("Request failed with status code %d: %s", 
+                                    response.statusCode(), response.body());
+                        }
                         
                         // Log additional details for common errors
                         if (response.statusCode() == 502) {
-                            logger.severe(String.format("[REQ-%s] Bad Gateway (502) - API server may be down or unreachable", requestId));
-                            logger.severe(String.format("[REQ-%s] Request URL: %s", requestId, request.uri()));
-                            logger.severe(String.format("[REQ-%s] Request method: %s", requestId, request.method()));
+                            logger.warning(String.format("[REQ-%s] Panel returned 502 (Bad Gateway) - likely restarting. Endpoint: %s", 
+                                    requestId, request.uri().getPath()));
+                            throw new PanelUnavailableException(502, request.uri().getPath(), 
+                                    "Panel is temporarily unavailable (502 Bad Gateway)");
                         } else if (response.statusCode() == 401 || response.statusCode() == 403) {
                             logger.severe(String.format("[REQ-%s] Authentication failed - check API key", requestId));
                         } else if (response.statusCode() == 404) {
                             logger.severe(String.format("[REQ-%s] Endpoint not found - check API URL", requestId));
                         }
                         
-                        logger.warning(String.format("[REQ-%s] %s", requestId, errorMsg));
-                        throw new RuntimeException(errorMsg);
+                        logger.warning(String.format("[REQ-%s] %s", requestId, errorMessage));
+                        throw new RuntimeException(errorMessage);
                     }
                 })
                 .exceptionally(throwable -> {
@@ -337,6 +353,26 @@ public class ModlHttpClientImpl implements ModlHttpClient {
                         .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
                         .build(),
                 PlayerLookupResponse.class);
+    }
+
+    @Override
+    public CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/minecraft/punishment/" + request.getPunishmentId() + "/pardon"))
+                        .header("X-API-Key", apiKey)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                        .build(), Void.class);
+    }
+
+    @Override
+    public CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request) {
+        return sendAsync(HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl + "/minecraft/player/pardon"))
+                        .header("X-API-Key", apiKey)
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                        .build(), Void.class);
     }
 
     private String generateRequestId() {

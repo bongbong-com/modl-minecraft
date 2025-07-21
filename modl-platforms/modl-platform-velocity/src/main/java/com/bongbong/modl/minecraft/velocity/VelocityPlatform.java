@@ -47,7 +47,9 @@ public class VelocityPlatform implements Platform {
 
     @Override
     public void sendMessage(UUID uuid, String message) {
-        server.getPlayer(uuid).orElseThrow().sendMessage(get(message));
+        // Handle both escaped newlines and literal \n sequences
+        String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
+        server.getPlayer(uuid).orElseThrow().sendMessage(get(formattedMessage));
     }
     
     @Override
@@ -175,7 +177,9 @@ public class VelocityPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         Player velocityPlayer = server.getPlayer(player.getUuid()).orElse(null);
         if (velocityPlayer != null) {
-            velocityPlayer.disconnect(get(reason));
+            // Handle both escaped newlines and literal \n sequences
+            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
+            velocityPlayer.disconnect(get(formattedReason));
         }
     }
 

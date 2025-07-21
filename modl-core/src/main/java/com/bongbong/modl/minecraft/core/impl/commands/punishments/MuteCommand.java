@@ -5,6 +5,7 @@ import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import com.bongbong.modl.minecraft.api.Account;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import com.bongbong.modl.minecraft.core.Constants;
 import com.bongbong.modl.minecraft.core.Platform;
@@ -103,8 +104,12 @@ public class MuteCommand extends BaseCommand {
             platform.staffBroadcast(staffMessage);
             
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                Map.of("error", throwable.getMessage())));
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            } else {
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                    Map.of("error", throwable.getMessage())));
+            }
             return null;
         });
     }

@@ -42,7 +42,9 @@ public class SpigotPlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) {
-            player.sendMessage(message);
+            // Handle both escaped newlines and literal \n sequences
+            String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
+            player.sendMessage(formattedMessage);
         }
     }
     
@@ -110,7 +112,9 @@ public class SpigotPlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         Player bukkitPlayer = Bukkit.getPlayer(player.getUuid());
         if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
-            bukkitPlayer.kickPlayer(reason);
+            // Handle both escaped newlines and literal \n sequences
+            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
+            bukkitPlayer.kickPlayer(formattedReason);
         }
     }
 

@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.velocity;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
@@ -122,8 +123,15 @@ public class JoinListener {
                 
                 logger.info(String.format("Allowed login for %s", event.getPlayer().getUsername()));
             }
+        } catch (PanelUnavailableException e) {
+            // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
+            logger.warn(String.format("Panel 502 during login check for %s - blocking login for safety",
+                    event.getPlayer().getUsername()));
+            Component errorMessage = Component.text("Unable to verify ban status. Login temporarily restricted for safety.")
+                    .color(NamedTextColor.RED);
+            event.setResult(ResultedEvent.ComponentResult.denied(errorMessage));
         } catch (Exception e) {
-            // On error, allow login but log warning
+            // On other errors, allow login but log warning  
             logger.error("Failed to check punishments for " + event.getPlayer().getUsername() + 
                         " - allowing login as fallback", e);
             event.setResult(ResultedEvent.ComponentResult.allowed());

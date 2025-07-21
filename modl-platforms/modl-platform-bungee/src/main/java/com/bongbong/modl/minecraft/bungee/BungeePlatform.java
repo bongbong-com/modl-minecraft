@@ -44,7 +44,9 @@ public class BungeePlatform implements Platform {
     public void sendMessage(UUID uuid, String message) {
         ProxiedPlayer player = ProxyServer.getInstance().getPlayer(uuid);
         if (player != null && player.isConnected()) {
-            player.sendMessage(message);
+            // Handle both escaped newlines and literal \n sequences
+            String formattedMessage = message.replace("\\n", "\n").replace("\\\\n", "\n");
+            player.sendMessage(formattedMessage);
         }
     }
     
@@ -112,7 +114,9 @@ public class BungeePlatform implements Platform {
     public void kickPlayer(AbstractPlayer player, String reason) {
         ProxiedPlayer bungeePlayer = ProxyServer.getInstance().getPlayer(player.getUuid());
         if (bungeePlayer != null && bungeePlayer.isConnected()) {
-            bungeePlayer.disconnect(new TextComponent(reason));
+            // Handle both escaped newlines and literal \n sequences
+            String formattedReason = reason.replace("\\n", "\n").replace("\\\\n", "\n");
+            bungeePlayer.disconnect(new TextComponent(formattedReason));
         }
     }
 

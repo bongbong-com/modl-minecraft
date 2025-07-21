@@ -3,6 +3,10 @@ package com.bongbong.modl.minecraft.core.util;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.core.Constants;
+import com.bongbong.modl.minecraft.core.locale.LocaleManager;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Utility class for formatting punishment messages across all platforms
@@ -10,27 +14,34 @@ import com.bongbong.modl.minecraft.core.Constants;
 public class PunishmentMessages {
     
     /**
+     * Format a ban message with all available punishment data (deprecated - use overload with LocaleManager)
+     * Platform-specific components should be created from this text
+     * @deprecated Use formatBanMessage(SimplePunishment, LocaleManager) instead
+     */
+    @Deprecated
+    public static String formatBanMessage(SimplePunishment ban) {
+        // Legacy fallback - create basic locale manager with default messages
+        return formatBanMessage(ban, new LocaleManager());
+    }
+    
+    /**
      * Format a ban message with all available punishment data
      * Platform-specific components should be created from this text
      */
-    public static String formatBanMessage(SimplePunishment ban) {
-        StringBuilder message = new StringBuilder();
-
-        String temp = ban.getExpiration() != null ? "temporarily" : "permanently";
+    public static String formatBanMessage(SimplePunishment ban, LocaleManager localeManager) {
+        // Use the actual punishment ordinal from the punishment data
+        int ordinal = ban.getOrdinal();
         
-        message.append("&c&lYou are " + temp +  " banned for: \n&f \n");
-        message.append("&f").append(ban.getDescription()).append("\n&f \n");
+        // Build variables for message formatting
+        Map<String, String> variables = new HashMap<>();
+        variables.put("target", "You");
+        variables.put("reason", ban.getDescription() != null ? ban.getDescription() : "No reason specified");
+        variables.put("duration", ban.isPermanent() ? "permanent" : formatDuration(ban.getExpiration() - System.currentTimeMillis()));
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        variables.put("id", ban.getId() != null ? ban.getId() : "Unknown");
         
-        // Add expiration information with formatted duration
-        if (!ban.isPermanent()) {
-            assert ban.getExpiration() != null;
-            message.append("&7This ban will expire in ").append(formatDuration(ban.getExpiration() - System.currentTimeMillis())).append("\n");
-        }
-        
-        // Add appeal information
-        message.append("&7Appeal at ").append(Constants.PANEL_URL).append("/appeal using punishment ID #" + ban.getId() + "");
-        
-        return message.toString();
+        // Use punishment type specific message for consistency
+        return localeManager.getPlayerNotificationMessage(ordinal, variables);
     }
 
     public static String getFormattedDuration(SimplePunishment punishment) {
@@ -48,40 +59,105 @@ public class PunishmentMessages {
         return formatDuration(timeLeft);
     }
     /**
+     * Format a mute message with all available punishment data (deprecated - use overload with LocaleManager)
+     * @deprecated Use formatMuteMessage(SimplePunishment, LocaleManager) instead
+     */
+    @Deprecated
+    public static String formatMuteMessage(SimplePunishment mute) {
+        // Legacy fallback - create basic locale manager with default messages
+        return formatMuteMessage(mute, new LocaleManager());
+    }
+    
+    /**
      * Format a mute message with all available punishment data
      */
-    public static String formatMuteMessage(SimplePunishment mute) {
-        StringBuilder message = new StringBuilder();
+    public static String formatMuteMessage(SimplePunishment mute, LocaleManager localeManager) {
+        // Use the actual punishment ordinal from the punishment data
+        int ordinal = mute.getOrdinal();
         
-        message.append("§cYou have been muted!\n");
-        message.append("§7Reason: §f").append(mute.getDescription()).append("\n");
-        message.append("§7Mute ID: §e").append(mute.getId()).append("\n");
+        // Build variables for message formatting
+        Map<String, String> variables = new HashMap<>();
+        variables.put("target", "You");
+        variables.put("reason", mute.getDescription() != null ? mute.getDescription() : "No reason specified");
+        variables.put("duration", mute.isPermanent() ? "permanent" : formatDuration(mute.getExpiration() - System.currentTimeMillis()));
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        variables.put("id", mute.getId() != null ? mute.getId() : "Unknown");
         
-        // Add expiration information
-        if (mute.isPermanent()) {
-            message.append("§4This mute is permanent.\n");
-        } else if (mute.isExpired()) {
-            message.append("§aThis mute has expired.\n");
-        } else {
-            message.append("§7Expires in: §f").append(formatDuration(mute.getExpiration() - System.currentTimeMillis())).append("\n");
-            message.append("§7Expires: §f").append(formatTime(mute.getExpirationAsDate())).append("\n");
-        }
+        // Use punishment type specific message for consistency
+        return localeManager.getPlayerNotificationMessage(ordinal, variables);
+    }
+    
+    /**
+     * Format a kick message with all available punishment data (deprecated - use overload with LocaleManager)
+     * @deprecated Use formatKickMessage(SimplePunishment, LocaleManager) instead
+     */
+    @Deprecated
+    public static String formatKickMessage(SimplePunishment kick) {
+        // Legacy fallback - create basic locale manager with default messages
+        return formatKickMessage(kick, new LocaleManager());
+    }
+    
+    /**
+     * Format a kick message with all available punishment data
+     */
+    public static String formatKickMessage(SimplePunishment kick, LocaleManager localeManager) {
+        // Use the actual punishment ordinal from the punishment data
+        int ordinal = kick.getOrdinal();
         
-        return message.toString();
+        // Build variables for message formatting
+        Map<String, String> variables = new HashMap<>();
+        variables.put("target", "You");
+        variables.put("reason", kick.getDescription() != null ? kick.getDescription() : "No reason specified");
+        variables.put("duration", "temporary"); // Kicks are always temporary
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        variables.put("id", kick.getId() != null ? kick.getId() : "Unknown");
+        
+        // Use punishment type specific message for consistency
+        return localeManager.getPlayerNotificationMessage(ordinal, variables);
+    }
+
+    /**
+     * Format a punishment for broadcast messages (deprecated - use overload with LocaleManager)
+     * @deprecated Use formatPunishmentBroadcast(String, SimplePunishment, String, LocaleManager) instead
+     */
+    @Deprecated
+    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action) {
+        // Legacy fallback - create basic locale manager with default messages
+        return formatPunishmentBroadcast(username, punishment, action, new LocaleManager());
     }
     
     /**
      * Format a punishment for broadcast messages
      */
-    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action) {
-        String duration;
-        if (punishment.isPermanent()) {
-            duration = "permanently";
-        } else {
-            assert punishment.getExpiration() != null;
-            duration = formatDuration(punishment.getExpiration() - System.currentTimeMillis());
+    public static String formatPunishmentBroadcast(String username, SimplePunishment punishment, String action, LocaleManager localeManager) {
+        // Determine punishment type ordinal based on action (for manual punishments)
+        int ordinal;
+        switch (action.toLowerCase()) {
+            case "kicked":
+                ordinal = 0; // Kick
+                break;
+            case "muted":
+                ordinal = 1; // Manual Mute
+                break;
+            case "banned":
+                ordinal = 2; // Manual Ban
+                break;
+            default:
+                // For dynamic punishments, try to determine from punishment type
+                ordinal = punishment.getType() != null ? Integer.parseInt(punishment.getType()) : 2;
+                break;
         }
-        return String.format("§c%s has been %s %s: §f%s", username, action, duration, punishment.getDescription());
+        
+        // Build variables for message formatting
+        Map<String, String> variables = new HashMap<>();
+        variables.put("target", username);
+        variables.put("reason", punishment.getDescription() != null ? punishment.getDescription() : "No reason specified");
+        variables.put("duration", punishment.isPermanent() ? "permanent" : formatDuration(punishment.getExpiration() - System.currentTimeMillis()));
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
+        variables.put("id", punishment.getId() != null ? punishment.getId() : "Unknown");
+        
+        // Use public notification message for consistency
+        return localeManager.getPublicNotificationMessage(ordinal, variables);
     }
     
     /**

@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.*;
 import co.aikar.commands.annotation.Optional;
 import com.bongbong.modl.minecraft.api.Account;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentCreateRequest;
 import com.bongbong.modl.minecraft.api.http.response.PunishmentCreateResponse;
 import com.bongbong.modl.minecraft.api.http.response.PunishmentTypesResponse;
@@ -38,11 +39,17 @@ public class PunishCommand extends BaseCommand {
 
     @CommandCompletion("@players @punishment-types")
     @CommandAlias("punish")
-    @Syntax("<target> <type> [reason...] [-severity low|regular|severe] [-low] [-regular] [-severe] [-alt-blocking] [-silent] [-stat-wipe]")
+    @Syntax("<target> <type> [reason...] [-low|regular|severe] [-ab (alt block)] [-s (silent)] [-sw (stat-wipe)]")
     @Description("Issue a punishment to a player. Multi-word punishment types like 'Chat Abuse' are supported without quotes.")
-    public void punish(CommandIssuer sender, @Name("target") Account target, @Single @Name("type") String type, @Optional @Name("reason") String[] reasonArgs) {
+    public void punish(CommandIssuer sender, @Name("target") Account target, @Name("args") String[] args) {
         if (target == null) {
             sender.sendMessage(localeManager.getPunishmentMessage("general.player_not_found", Map.of()));
+            return;
+        }
+
+        // Check if we have any arguments
+        if (args == null || args.length == 0) {
+            sender.sendMessage(localeManager.getPunishmentMessage("general.invalid_syntax", Map.of()));
             return;
         }
 
@@ -55,12 +62,9 @@ public class PunishCommand extends BaseCommand {
         // Use cached punishment types
         List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes = cachedPunishmentTypes;
         
-        // Find the punishment type by name
-        java.util.Optional<PunishmentTypesResponse.PunishmentTypeData> punishmentTypeOpt = punishmentTypes.stream()
-                .filter(pt -> pt.getName().equalsIgnoreCase(type))
-                .findFirst();
-
-        if (!punishmentTypeOpt.isPresent()) {
+        // Parse punishment type and remaining arguments
+        ParsedCommand parsed = parsePunishmentTypeAndArgs(args, punishmentTypes);
+        if (parsed == null) {
             String availableTypes = punishmentTypes.stream()
                     .map(PunishmentTypesResponse.PunishmentTypeData::getName)
                     .collect(Collectors.joining(", "));
@@ -69,7 +73,7 @@ public class PunishCommand extends BaseCommand {
             return;
         }
 
-        final PunishmentTypesResponse.PunishmentTypeData punishmentType = punishmentTypeOpt.get();
+        final PunishmentTypesResponse.PunishmentTypeData punishmentType = parsed.punishmentType;
 
         // Check permission for this specific punishment type
         String punishmentPermission = PermissionUtil.formatPunishmentPermission(punishmentType.getName());
@@ -80,12 +84,11 @@ public class PunishCommand extends BaseCommand {
         }
 
         // Parse arguments
-        String combinedArgs = reasonArgs != null ? String.join(" ", reasonArgs) : "";
-        PunishmentArgs punishmentArgs = parseArguments(combinedArgs);
+        PunishmentArgs punishmentArgs = parseArguments(parsed.remainingArgs);
         
         // Validate severity
         if (punishmentArgs.severity != null && !VALID_SEVERITIES.contains(punishmentArgs.severity)) {
-            sender.sendMessage(Colors.translate("&cInvalid severity. Valid severities: low, regular, severe"));
+            sender.sendMessage(localeManager.getMessage("punishment_commands.invalid_severity"));
             return;
         }
 
@@ -151,9 +154,10 @@ public class PunishCommand extends BaseCommand {
                     .get("general.punishment_issued"));
                 
                 if (!silentPunishment) {
-                    // Public notification - try punishment type specific first, then fall back to default
-                    String publicMessage = getPublicNotificationMessage(punishmentTypeName, targetName, 0, punishmentType.getOrdinal());
-                    if (publicMessage != null) {
+                    // Public notification using new locale format
+                    String publicMessage = getPublicNotificationMessage(punishmentTypeName, targetName, 
+                            punishmentArgs.duration, punishmentType.getOrdinal(), punishmentArgs.reason);
+                    if (publicMessage != null && !publicMessage.trim().isEmpty()) {
                         platform.broadcast(publicMessage);
                     }
                 }
@@ -172,8 +176,12 @@ public class PunishCommand extends BaseCommand {
                     Map.of("error", response.getMessage())));
             }
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error", 
-                Map.of("error", throwable.getMessage())));
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            } else {
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error", 
+                    Map.of("error", throwable.getMessage())));
+            }
             return null;
         });
     }
@@ -200,9 +208,15 @@ public class PunishCommand extends BaseCommand {
                 });
             }
         }).exceptionally(throwable -> {
-            platform.runOnMainThread(() -> {
-                System.err.println("[MODL] Error loading punishment types: " + throwable.getMessage());
-            });
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
+                });
+            } else {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Error loading punishment types: " + throwable.getMessage());
+                });
+            }
             return null;
         });
         
@@ -234,50 +248,19 @@ public class PunishCommand extends BaseCommand {
                 System.out.println("[MODL] Loaded permissions for " + response.getData().getStaff().size() + " staff members");
             });
         }).exceptionally(throwable -> {
-            platform.runOnMainThread(() -> {
-                System.err.println("[MODL] Error loading staff permissions: " + throwable.getMessage());
-            });
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Panel restarting, cannot load staff permissions: " + throwable.getMessage());
+                });
+            } else {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Error loading staff permissions: " + throwable.getMessage());
+                });
+            }
             return null;
         });
     }
 
-    /**
-     * Refresh command to manually reload punishment types
-     */
-    @CommandAlias("modl reload")
-    @Syntax("reload")
-    public void reload(CommandIssuer sender) {
-        // Check if user has admin permissions to refresh cache
-        if (!PermissionUtil.hasAnyPermission(sender, cache, "admin.settings.view", "admin.settings.modify")) {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.no_permission_reload", Map.of()));
-            return;
-        }
-        sender.sendMessage(localeManager.getPunishmentMessage("general.reloading", Map.of()));
-        
-        // Refresh punishment types
-        httpClient.getPunishmentTypes().thenAccept(response -> {
-            if (response.isSuccess()) {
-                // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
-                cachedPunishmentTypes = response.getData().stream()
-                        .filter(pt -> pt.getOrdinal() > 5)
-                        .collect(Collectors.toList());
-                cacheInitialized = true;
-                
-                sender.sendMessage(localeManager.getPunishmentMessage("general.reload_success_types", 
-                    Map.of("count", String.valueOf(cachedPunishmentTypes.size()))));
-            } else {
-                sender.sendMessage(localeManager.getPunishmentMessage("general.reload_error", 
-                    Map.of("error", "Status: " + response.getStatus())));
-            }
-        }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.reload_error", 
-                Map.of("error", throwable.getMessage())));
-            return null;
-        });
-        
-        // Refresh staff permissions
-        loadStaffPermissions();
-    }
 
     /**
      * Get available punishment type names for tab completion
@@ -289,30 +272,35 @@ public class PunishCommand extends BaseCommand {
     }
     
     /**
+     * Update punishment types cache (called by reload command)
+     */
+    public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
+        // Filter out manual punishment types (ordinals 0-5: kick, manual_mute, manual_ban, security_ban, linked_ban, blacklist)
+        cachedPunishmentTypes = allTypes.stream()
+                .filter(pt -> pt.getOrdinal() > 5)
+                .collect(Collectors.toList());
+        cacheInitialized = true;
+    }
+    
+    /**
      * Get public notification message for punishment
      */
-    private String getPublicNotificationMessage(String punishmentTypeName, String targetName, long duration, int ordinal) {
-        // Determine if this is a temporary or permanent punishment
-        boolean isTemporary = duration > 0;
+    private String getPublicNotificationMessage(String punishmentTypeName, String targetName, long duration, int ordinal, String reason) {
+        // Find the punishment type to get description and other details
+        PunishmentTypesResponse.PunishmentTypeData punishmentType = cachedPunishmentTypes.stream()
+                .filter(pt -> pt.getOrdinal() == ordinal)
+                .findFirst()
+                .orElse(null);
+                
+        Map<String, String> variables = new HashMap<>();
+        variables.put("target", targetName);
+        variables.put("duration", localeManager.formatDuration(duration));
+        variables.put("reason", reason != null ? reason : "No reason specified");
+        variables.put("description", punishmentType != null ? punishmentType.getName() : punishmentTypeName);
+        variables.put("appeal_url", localeManager.getMessage("config.appeal_url"));
         
-        Map<String, String> variables = Map.of(
-            "target", targetName,
-            "duration", localeManager.formatDuration(duration)
-        );
-        
-        // Try punishment-type-specific message first using ordinal
-        String messagePath = isTemporary ? "public_notification.temporary" : "public_notification.permanent";
-        String specificMessage = localeManager.getPunishmentTypeMessage(ordinal, messagePath, variables);
-        
-        // If no specific message found, use default based on punishment category
-        if (specificMessage.contains("Missing locale:")) {
-            String category = getBasicPunishmentCategory(punishmentTypeName);
-            String defaultPath = isTemporary ? "public_notifications.temporary." : "public_notifications.permanent.";
-            defaultPath += category;
-            return localeManager.getPunishmentMessage(defaultPath, variables);
-        }
-        
-        return specificMessage;
+        // Get public notification using new locale format
+        return localeManager.getPublicNotificationMessage(ordinal, variables);
     }
     
     /**
@@ -543,7 +531,48 @@ public class PunishCommand extends BaseCommand {
     }
 
     private String getWarningMessage(String punishmentTypeName, String username) {
-        return Colors.translate("&c" + username + " has been " + punishmentTypeName.toLowerCase() + ".");
+        return localeManager.getMessage("punishment_commands.warning_message", Map.of(
+            "username", username,
+            "punishment_type", punishmentTypeName.toLowerCase()
+        ));
+    }
+
+    /**
+     * Parse punishment type and remaining arguments from command args
+     * This handles multi-word punishment types by trying to match the longest possible punishment type name
+     */
+    private ParsedCommand parsePunishmentTypeAndArgs(String[] args, List<PunishmentTypesResponse.PunishmentTypeData> punishmentTypes) {
+        // Try to match punishment types starting from the longest possible match
+        for (int i = Math.min(args.length, 4); i >= 1; i--) {
+            // Build potential punishment type name from first i words
+            String potentialType = String.join(" ", Arrays.copyOfRange(args, 0, i));
+            
+            // Check if this matches any punishment type (case insensitive)
+            java.util.Optional<PunishmentTypesResponse.PunishmentTypeData> matchedType = punishmentTypes.stream()
+                    .filter(pt -> pt.getName().equalsIgnoreCase(potentialType))
+                    .findFirst();
+            
+            if (matchedType.isPresent()) {
+                // Found a match, return the punishment type and remaining args
+                String remainingArgs = "";
+                if (i < args.length) {
+                    remainingArgs = String.join(" ", Arrays.copyOfRange(args, i, args.length));
+                }
+                return new ParsedCommand(matchedType.get(), remainingArgs);
+            }
+        }
+        
+        return null; // No matching punishment type found
+    }
+
+    private static class ParsedCommand {
+        PunishmentTypesResponse.PunishmentTypeData punishmentType;
+        String remainingArgs;
+        
+        ParsedCommand(PunishmentTypesResponse.PunishmentTypeData punishmentType, String remainingArgs) {
+            this.punishmentType = punishmentType;
+            this.remainingArgs = remainingArgs;
+        }
     }
 
     private static class PunishmentArgs {

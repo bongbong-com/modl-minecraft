@@ -51,7 +51,9 @@ public class ChatListener {
                 } else {
                     muteMessage = "§cYou are muted!";
                 }
-                Component muteComponent = Colors.get(muteMessage);
+                // Handle both escaped newlines and literal \n sequences
+                String formattedMessage = muteMessage.replace("\\n", "\n").replace("\\\\n", "\n");
+                Component muteComponent = Colors.get(formattedMessage);
                 event.getPlayer().sendMessage(muteComponent);
             }
         }

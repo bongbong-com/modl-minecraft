@@ -64,4 +64,11 @@ public interface ModlHttpClient {
 
     @NotNull
     CompletableFuture<PlayerLookupResponse> lookupPlayer(@NotNull PlayerLookupRequest request);
+
+    // Pardon methods
+    @NotNull
+    CompletableFuture<Void> pardonPunishment(@NotNull PardonPunishmentRequest request);
+
+    @NotNull
+    CompletableFuture<Void> pardonPlayer(@NotNull PardonPlayerRequest request);
 }

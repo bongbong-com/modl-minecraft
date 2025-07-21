@@ -6,6 +6,7 @@ import co.aikar.commands.annotation.*;
 import com.bongbong.modl.minecraft.api.AbstractPlayer;
 import com.bongbong.modl.minecraft.api.Account;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.CreatePunishmentRequest;
 import com.bongbong.modl.minecraft.core.Constants;
 import com.bongbong.modl.minecraft.core.Platform;
@@ -78,9 +79,13 @@ public class KickCommand extends BaseCommand {
             // Actually kick the player from the server
             AbstractPlayer onlinePlayer = platform.getAbstractPlayer(target.getMinecraftUuid(), false);
             if (onlinePlayer != null && platform.isOnline(target.getMinecraftUuid())) {
-                // Prepare kick message for the player
-                String kickMessage = localeManager.getPunishmentTypeMessage(0, "player_notification.message", 
-                    Map.of("reason", kickArgs.reason.isEmpty() ? "No reason specified" : kickArgs.reason));
+                // Prepare kick message for the player using punishment type format
+                Map<String, String> variables = Map.of(
+                    "target", "You",
+                    "reason", kickArgs.reason.isEmpty() ? "No reason specified" : kickArgs.reason,
+                    "appeal_url", localeManager.getMessage("config.appeal_url")
+                );
+                String kickMessage = localeManager.getPlayerNotificationMessage(0, variables);
                 
                 // Kick the player
                 platform.runOnMainThread(() -> {
@@ -111,8 +116,12 @@ public class KickCommand extends BaseCommand {
             platform.staffBroadcast(staffMessage);
             
         }).exceptionally(throwable -> {
-            sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
-                Map.of("error", throwable.getMessage())));
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            } else {
+                sender.sendMessage(localeManager.getPunishmentMessage("general.punishment_error",
+                    Map.of("error", throwable.getMessage())));
+            }
             return null;
         });
     }

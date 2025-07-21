@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class LocaleManager {
     
@@ -216,7 +217,7 @@ public class LocaleManager {
         allVariables.putIfAbsent("appeal_url", getMessage("config.appeal_url"));
         allVariables.putIfAbsent("default_reason", getMessage("config.default_reason"));
         
-        return getMessage("punishments." + path, allVariables);
+        return getMessage(path, allVariables);
     }
     
     /**
@@ -260,6 +261,81 @@ public class LocaleManager {
         
         // Fall back to default punishment message
         return getPunishmentMessage(messagePath, variables);
+    }
+    
+    /**
+     * Get public notification message for punishment type by ordinal
+     */
+    public String getPublicNotificationMessage(int ordinal, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".public_notification";
+        Object value = getNestedValue(messages, path);
+        
+        if (value instanceof String) {
+            return getMessage(path, variables);
+        }
+        
+        // Fallback to default if no specific message found
+        return getMessage("punishments.public_notifications.default", variables);
+    }
+    
+    /**
+     * Get player notification message for punishment type by ordinal (returns joined lines)
+     */
+    public String getPlayerNotificationMessage(int ordinal, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".player_notification";
+        Object value = getNestedValue(messages, path);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line and join with newlines
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.joining("\n"));
+        } else if (value instanceof String) {
+            // Handle legacy single string format
+            return getMessage(path, variables);
+        }
+        
+        // Fallback to default if no specific message found
+        return getMessage("punishments.player_notifications.default", variables);
+    }
+    
+    /**
+     * Get player notification message lines as separate strings (for multi-line sending)
+     */
+    public List<String> getPlayerNotificationLines(int ordinal, Map<String, String> variables) {
+        String path = "punishment_types.ordinal_" + ordinal + ".player_notification";
+        Object value = getNestedValue(messages, path);
+        
+        if (value instanceof List<?>) {
+            @SuppressWarnings("unchecked")
+            List<String> lines = (List<String>) value;
+            
+            // Replace variables in each line
+            return lines.stream()
+                    .map(line -> {
+                        // Replace placeholders
+                        for (Map.Entry<String, String> entry : variables.entrySet()) {
+                            line = line.replace("{" + entry.getKey() + "}", entry.getValue());
+                        }
+                        return colorize(line);
+                    })
+                    .collect(Collectors.toList());
+        } else if (value instanceof String) {
+            // Handle legacy single string format
+            return List.of(getMessage(path, variables));
+        }
+        
+        // Fallback to default if no specific message found
+        return List.of(getMessage("punishments.player_notifications.default", variables));
     }
     
     /**
@@ -407,5 +483,19 @@ public class LocaleManager {
             this.reportType = reportType;
             this.subject = subject;
         }
+    }
+    
+    /**
+     * Get the current locale name
+     */
+    public String getCurrentLocale() {
+        return currentLocale;
+    }
+    
+    /**
+     * Reload the locale from file
+     */
+    public void reloadLocale() {
+        loadLocale(currentLocale);
     }
 }

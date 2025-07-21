@@ -1,8 +1,6 @@
 package com.bongbong.modl.minecraft.core;
 
 
-import com.bongbong.modl.minecraft.core.util.Colors;
-
 public interface Constants {
     String PERMISSION = "hammer.mod";
 
@@ -11,9 +9,10 @@ public interface Constants {
     // enable this if you want to ban/report players that have never joined (not in db)
     // could lead to rate limit errors so not recommended
     boolean QUERY_MOJANG = false;
-    String NOT_FOUND = QUERY_MOJANG ?
-            Colors.translate("&cNo player with that username exists (queried Mojang API)") :
-            Colors.translate("&cNo player with that username has never joined the server.");
+    
+    // Note: Player not found messages are now handled through the locale system
+    // Use localeManager.getMessage("constants.mojang_api_no_player") or 
+    // localeManager.getMessage("constants.never_joined_server") instead
 
     String API_KEY = "fiE_fmowW-qth2IQNGlK0deuQLpl-gI043SPGy--xYc";
     String API_URL = "https://001.cobl.gg/api";

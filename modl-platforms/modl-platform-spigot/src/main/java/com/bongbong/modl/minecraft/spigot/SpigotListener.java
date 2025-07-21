@@ -3,6 +3,7 @@ package com.bongbong.modl.minecraft.spigot;
 import com.bongbong.modl.minecraft.api.Punishment;
 import com.bongbong.modl.minecraft.api.SimplePunishment;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.PlayerDisconnectRequest;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLoginRequest;
 import com.bongbong.modl.minecraft.api.http.request.PunishmentAcknowledgeRequest;
@@ -76,9 +77,14 @@ public class SpigotListener implements Listener {
                     acknowledgeBanEnforcement(ban, event.getPlayer().getUniqueId().toString());
                 }
             }
+        } catch (PanelUnavailableException e) {
+            // Panel is restarting (502 error) - deny login for safety to prevent banned players from connecting
+            platform.getLogger().warning("Panel 502 during login check for " + event.getPlayer().getName() + " - blocking login for safety");
+            event.setResult(PlayerLoginEvent.Result.KICK_OTHER);
+            event.setKickMessage("Unable to verify ban status. Login temporarily restricted for safety.");
         } catch (Exception e) {
             platform.getLogger().severe("Failed to check punishments for " + event.getPlayer().getName() + ": " + e.getMessage());
-            // Allow login on error to prevent false kicks
+            // Allow login on other errors to prevent false kicks
         }
     }
     

@@ -27,6 +27,8 @@ public class SimplePunishment {
     @NotNull
     private String id;
     
+    private int ordinal; // The punishment type ordinal (0=kick, 1=mute, 2+=ban)
+    
     /**
      * Check if this is a ban punishment
      */

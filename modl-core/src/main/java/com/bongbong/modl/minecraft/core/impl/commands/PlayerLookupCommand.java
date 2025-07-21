@@ -4,19 +4,25 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import com.bongbong.modl.minecraft.api.http.ModlHttpClient;
+import com.bongbong.modl.minecraft.api.http.PanelUnavailableException;
 import com.bongbong.modl.minecraft.api.http.request.PlayerLookupRequest;
 import com.bongbong.modl.minecraft.api.http.response.PlayerLookupResponse;
+import com.bongbong.modl.minecraft.api.http.response.LinkedAccountsResponse;
+import com.bongbong.modl.minecraft.api.http.response.PunishmentTypesResponse;
+import com.bongbong.modl.minecraft.api.Account;
+import com.bongbong.modl.minecraft.api.Note;
 import com.bongbong.modl.minecraft.core.Platform;
 import com.bongbong.modl.minecraft.core.impl.cache.Cache;
 import com.bongbong.modl.minecraft.core.locale.LocaleManager;
-import com.bongbong.modl.minecraft.core.util.Colors;
 import lombok.RequiredArgsConstructor;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class PlayerLookupCommand extends BaseCommand {
@@ -24,6 +30,58 @@ public class PlayerLookupCommand extends BaseCommand {
     private final Platform platform;
     private final Cache cache;
     private final LocaleManager localeManager;
+    private final String panelUrl;
+    
+    // Cache for punishment type ID -> name mapping
+    private final Map<String, String> punishmentTypeNames = new ConcurrentHashMap<>();
+    private boolean punishmentTypesLoaded = false;
+    
+    /**
+     * Initialize punishment types cache - called once at startup
+     */
+    public void initializePunishmentTypes() {
+        httpClient.getPunishmentTypes().thenAccept(response -> {
+            if (response.isSuccess()) {
+                // Map all punishment types (ID -> name)
+                response.getData().forEach(pt -> {
+                    punishmentTypeNames.put(String.valueOf(pt.getId()), pt.getName());
+                    punishmentTypeNames.put(String.valueOf(pt.getOrdinal()), pt.getName());
+                });
+                punishmentTypesLoaded = true;
+                platform.runOnMainThread(() -> {
+                    System.out.println("[MODL] Loaded " + response.getData().size() + " punishment types for lookup display");
+                });
+            } else {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Failed to load punishment types for lookup display: " + response.getStatus());
+                });
+            }
+        }).exceptionally(throwable -> {
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Panel restarting, cannot load punishment types: " + throwable.getMessage());
+                });
+            } else {
+                platform.runOnMainThread(() -> {
+                    System.err.println("[MODL] Error loading punishment types for lookup display: " + throwable.getMessage());
+                });
+            }
+            return null;
+        });
+    }
+    
+    /**
+     * Update punishment types cache (called by reload command)
+     */
+    public void updatePunishmentTypesCache(List<PunishmentTypesResponse.PunishmentTypeData> allTypes) {
+        punishmentTypeNames.clear();
+        // Map all punishment types (ID -> name)
+        allTypes.forEach(pt -> {
+            punishmentTypeNames.put(String.valueOf(pt.getId()), pt.getName());
+            punishmentTypeNames.put(String.valueOf(pt.getOrdinal()), pt.getName());
+        });
+        punishmentTypesLoaded = true;
+    }
 
     @CommandCompletion("@players")
     @CommandAlias("lookup|look|check|info")
@@ -37,13 +95,13 @@ public class PlayerLookupCommand extends BaseCommand {
             
             
             if (!isStaffMember) {
-                sender.sendMessage(Colors.translate("&cYou must be a staff member to use this command."));
+                sender.sendMessage(localeManager.getMessage("player_lookup.permission_denied"));
                 return;
             }
         }
         // Console can always use the command
 
-        sender.sendMessage(Colors.translate("&7Looking up player &e" + playerQuery + "&7..."));
+        sender.sendMessage(localeManager.getMessage("player_lookup.looking_up", Map.of("player", playerQuery)));
 
         PlayerLookupRequest request = new PlayerLookupRequest(playerQuery);
         
@@ -51,142 +109,164 @@ public class PlayerLookupCommand extends BaseCommand {
         
         future.thenAccept(response -> {
             if (response.isSuccess() && response.getData() != null) {
-                displayPlayerInfo(sender, response.getData());
+                // Also fetch linked accounts to get staff notes
+                UUID playerUuid = UUID.fromString(response.getData().getMinecraftUuid());
+                httpClient.getLinkedAccounts(playerUuid).thenAccept(linkedResponse -> {
+                    displayPlayerInfo(sender, response.getData(), linkedResponse);
+                }).exceptionally(linkedThrowable -> {
+                    if (linkedThrowable.getCause() instanceof PanelUnavailableException) {
+                        sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+                    } else {
+                        // Still display info even if linked accounts fetch fails
+                        displayPlayerInfo(sender, response.getData(), null);
+                    }
+                    return null;
+                });
             } else {
-                sender.sendMessage(Colors.translate("&cPlayer not found: &e" + playerQuery));
+                sender.sendMessage(localeManager.getMessage("player_lookup.not_found", Map.of("player", playerQuery)));
             }
         }).exceptionally(throwable -> {
-            sender.sendMessage(Colors.translate("&cError looking up player: " + throwable.getMessage()));
+            if (throwable.getCause() instanceof PanelUnavailableException) {
+                sender.sendMessage(localeManager.getMessage("api_errors.panel_restarting"));
+            } else {
+                sender.sendMessage(localeManager.getMessage("player_lookup.error", Map.of("error", throwable.getMessage())));
+            }
             return null;
         });
     }
 
-    private void displayPlayerInfo(CommandIssuer sender, PlayerLookupResponse.PlayerData data) {
+    private void displayPlayerInfo(CommandIssuer sender, PlayerLookupResponse.PlayerData data, LinkedAccountsResponse linkedResponse) {
         // Header
-        sender.sendMessage(Colors.translate("&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-        sender.sendMessage(Colors.translate("&6&lPlayer Information: &e" + data.getCurrentUsername()));
-        sender.sendMessage(Colors.translate("&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+        sender.sendMessage(localeManager.getMessage("player_lookup.header"));
+        sender.sendMessage(localeManager.getMessage("player_lookup.title", Map.of("username", data.getCurrentUsername())));
+        sender.sendMessage(localeManager.getMessage("player_lookup.header"));
 
-        // Basic Info
-        sender.sendMessage(Colors.translate("&7UUID: &f" + data.getMinecraftUuid()));
+        // UUID
+        sender.sendMessage(localeManager.getMessage("player_lookup.uuid", Map.of("uuid", data.getMinecraftUuid())));
         
-        if (data.getPreviousUsernames() != null && !data.getPreviousUsernames().isEmpty()) {
-            String prevNames = String.join(", ", data.getPreviousUsernames());
-            if (prevNames.length() > 50) {
-                prevNames = prevNames.substring(0, 47) + "...";
-            }
-            sender.sendMessage(Colors.translate("&7Previous names: &f" + prevNames));
-        }
-
-        // Online Status
-        String onlineStatus = data.isOnline() ? "&aOnline" : "&cOffline";
-        sender.sendMessage(Colors.translate("&7Status: " + onlineStatus));
+        // Currently Banned/Muted Status - Use cache for accuracy and supplement with API data
+        UUID playerUuid = UUID.fromString(data.getMinecraftUuid());
+        boolean isBanned = cache.isBanned(playerUuid);
+        boolean isMuted = cache.isMuted(playerUuid);
         
-        if (data.isOnline() && data.getCurrentServer() != null) {
-            sender.sendMessage(Colors.translate("&7Current server: &f" + data.getCurrentServer()));
-        }
-
-        // Dates
-        if (data.getFirstSeen() != null) {
-            sender.sendMessage(Colors.translate("&7First seen: &f" + formatDate(data.getFirstSeen())));
-        }
-        if (data.getLastSeen() != null) {
-            sender.sendMessage(Colors.translate("&7Last seen: &f" + formatDate(data.getLastSeen())));
-        }
-
-        // Location Info
-        if (data.getCountry() != null) {
-            sender.sendMessage(Colors.translate("&7Country: &f" + data.getCountry()));
-        }
-
-        // Punishment Statistics
-        if (data.getPunishmentStats() != null) {
-            PlayerLookupResponse.PunishmentStats stats = data.getPunishmentStats();
-            sender.sendMessage(Colors.translate(""));
-            sender.sendMessage(Colors.translate("&c&lPunishment Statistics:"));
-            
-            String statusColor = getStatusColor(stats.getStatus());
-            sender.sendMessage(Colors.translate("&7Status: " + statusColor + stats.getStatus().toUpperCase() + " &7(&f" + stats.getPoints() + " points&7)"));
-            
-            sender.sendMessage(Colors.translate("&7Total punishments: &f" + stats.getTotalPunishments()));
-            sender.sendMessage(Colors.translate("&7Active punishments: &f" + stats.getActivePunishments()));
-            
-            if (stats.getBans() > 0) {
-                sender.sendMessage(Colors.translate("&7Bans: &f" + stats.getBans()));
-            }
-            if (stats.getMutes() > 0) {
-                sender.sendMessage(Colors.translate("&7Mutes: &f" + stats.getMutes()));
-            }
-            if (stats.getKicks() > 0) {
-                sender.sendMessage(Colors.translate("&7Kicks: &f" + stats.getKicks()));
-            }
-            if (stats.getWarnings() > 0) {
-                sender.sendMessage(Colors.translate("&7Warnings: &f" + stats.getWarnings()));
-            }
-        }
-
-        // Recent Punishments
-        if (data.getRecentPunishments() != null && !data.getRecentPunishments().isEmpty()) {
-            sender.sendMessage(Colors.translate(""));
-            sender.sendMessage(Colors.translate("&c&lRecent Punishments:"));
-            
-            int count = 0;
-            for (PlayerLookupResponse.RecentPunishment punishment : data.getRecentPunishments()) {
-                if (count >= 3) break; // Limit to 3 recent punishments
-                
-                String activeIndicator = punishment.isActive() ? "&c●" : "&8●";
-                String typeColor = getPunishmentTypeColor(punishment.getType());
-                
-                sender.sendMessage(Colors.translate(String.format("  %s %s%s &7by &f%s &7- %s", 
-                    activeIndicator, 
-                    typeColor, 
-                    punishment.getType() != null ? punishment.getType() : "Unknown",
-                    punishment.getIssuer() != null ? punishment.getIssuer() : "System",
-                    formatDate(punishment.getIssuedAt()))));
-                
-                count++;
-            }
-        }
-
-        // Recent Tickets
-        if (data.getRecentTickets() != null && !data.getRecentTickets().isEmpty()) {
-            sender.sendMessage(Colors.translate(""));
-            sender.sendMessage(Colors.translate("&9&lRecent Tickets:"));
-            
-            int count = 0;
-            for (PlayerLookupResponse.RecentTicket ticket : data.getRecentTickets()) {
-                if (count >= 2) break; // Limit to 2 recent tickets
-                
-                String statusColor = getTicketStatusColor(ticket.getStatus());
-                String title = ticket.getTitle() != null ? ticket.getTitle() : "No title";
-                String status = ticket.getStatus() != null ? ticket.getStatus() : "Open";
-                
-                sender.sendMessage(Colors.translate(String.format("  &7#%s %s%s &7- %s", 
-                    ticket.getId(),
-                    statusColor,
-                    status.toUpperCase(),
-                    formatDate(ticket.getCreatedAt()))));
-                
-                if (title.length() > 40) {
-                    sender.sendMessage(Colors.translate("    &8" + title.substring(0, 37) + "..."));
-                } else {
-                    sender.sendMessage(Colors.translate("    &8" + title));
+        // Supplement with API data if not found in cache (for offline players)
+        if (!isBanned || !isMuted) {
+            if (data.getRecentPunishments() != null) {
+                for (PlayerLookupResponse.RecentPunishment punishment : data.getRecentPunishments()) {
+                    if (punishment.isActive()) {
+                        String type = punishment.getType();
+                        if (type != null) {
+                            String typeName = getPunishmentTypeName(type).toLowerCase();
+                            // More comprehensive type checking
+                            if (!isBanned && (typeName.contains("ban") || typeName.equals("blacklist"))) {
+                                isBanned = true;
+                            }
+                            if (!isMuted && (typeName.contains("mute") || typeName.equals("silence"))) {
+                                isMuted = true;
+                            }
+                        }
+                    }
                 }
-                count++;
             }
         }
+        
+        String bannedStatus = isBanned ? "&cYes" : "&aNo";
+        String mutedStatus = isMuted ? "&cYes" : "&aNo";
+        sender.sendMessage(localeManager.getMessage("player_lookup.currently_banned", Map.of("status", bannedStatus)));
+        sender.sendMessage(localeManager.getMessage("player_lookup.currently_muted", Map.of("status", mutedStatus)));
+
+        // Staff Notes
+        sender.sendMessage(localeManager.getMessage("player_lookup.staff_notes_header"));
+        boolean hasNotes = false;
+        if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null) {
+            for (Account account : linkedResponse.getLinkedAccounts()) {
+                if (account.getNotes() != null && !account.getNotes().isEmpty()) {
+                    hasNotes = true;
+                    int noteCount = 0;
+                    for (Note note : account.getNotes()) {
+                        if (noteCount >= 3) break; // Limit to 3 most recent notes
+                        sender.sendMessage(localeManager.getMessage("player_lookup.staff_note_format", Map.of(
+                            "text", note.getText(),
+                            "issuer", note.getIssuerName()
+                        )));
+                        noteCount++;
+                    }
+                    break; // Only show notes from first account with notes
+                }
+            }
+        }
+        if (!hasNotes) {
+            sender.sendMessage(localeManager.getMessage("player_lookup.no_staff_notes"));
+        }
+        
+        // Total Punishments
+        int totalPunishments = 0;
+        if (data.getPunishmentStats() != null) {
+            totalPunishments = data.getPunishmentStats().getTotalPunishments();
+        }
+        sender.sendMessage(localeManager.getMessage("player_lookup.total_punishments", Map.of("count", String.valueOf(totalPunishments))));
+
+        // Linked Accounts
+        sender.sendMessage(localeManager.getMessage("player_lookup.linked_accounts_header"));
+        if (linkedResponse != null && linkedResponse.getLinkedAccounts() != null && !linkedResponse.getLinkedAccounts().isEmpty()) {
+            int accountCount = 0;
+            for (Account account : linkedResponse.getLinkedAccounts()) {
+                if (accountCount >= 5) break; // Limit to 5 accounts
+                String currentName = account.getUsernames() != null && !account.getUsernames().isEmpty() 
+                    ? account.getUsernames().get(account.getUsernames().size() - 1).getUsername()
+                    : "Unknown";
+                
+                // Determine punishment status
+                String status;
+                
+                // Check both ban and mute status using cache
+                boolean accountBanned = cache.isBanned(account.getMinecraftUuid());
+                boolean accountMuted = cache.isMuted(account.getMinecraftUuid());
+                
+                if (accountBanned && accountMuted) {
+                    status = localeManager.getMessage("player_lookup.status.banned_and_muted");
+                } else if (accountBanned) {
+                    status = localeManager.getMessage("player_lookup.status.banned");
+                } else if (accountMuted) {
+                    status = localeManager.getMessage("player_lookup.status.muted");
+                } else {
+                    status = localeManager.getMessage("player_lookup.status.no_punishments");
+                }
+                
+                sender.sendMessage(localeManager.getMessage("player_lookup.linked_account_format", Map.of(
+                    "username", currentName,
+                    "status", status
+                )));
+                accountCount++;
+            }
+            if (linkedResponse.getLinkedAccounts().size() > 5) {
+                sender.sendMessage(localeManager.getMessage("player_lookup.linked_account_more", Map.of(
+                    "count", String.valueOf(linkedResponse.getLinkedAccounts().size() - 5)
+                )));
+            }
+        } else {
+            sender.sendMessage(localeManager.getMessage("player_lookup.no_linked_accounts"));
+        }
+        
+        // Total Tickets
+        int totalTickets = 0;
+        if (data.getRecentTickets() != null) {
+            totalTickets = data.getRecentTickets().size();
+        }
+        sender.sendMessage(localeManager.getMessage("player_lookup.total_tickets", Map.of("count", String.valueOf(totalTickets))));
 
         // Profile Links
-        sender.sendMessage(Colors.translate(""));
-        if (data.getProfileUrl() != null) {
+        sender.sendMessage("");
+        if (data.getMinecraftUuid() != null) {
             // Create clickable JSON message for profile link
+            String profileUrl = panelUrl + "/panel?player=" + data.getMinecraftUuid();
             String profileMessage = String.format(
                 "{\"text\":\"\",\"extra\":[" +
                 "{\"text\":\"📋 \",\"color\":\"gold\"}," +
                 "{\"text\":\"View Full Profile\",\"color\":\"aqua\",\"underlined\":true," +
                 "\"clickEvent\":{\"action\":\"open_url\",\"value\":\"%s\"}," +
                 "\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Click to view %s's profile\"}}]}",
-                data.getProfileUrl(), data.getCurrentUsername()
+                profileUrl, data.getCurrentUsername()
             );
             
             if (sender.isPlayer()) {
@@ -195,11 +275,11 @@ public class PlayerLookupCommand extends BaseCommand {
                     platform.sendJsonMessage(senderUuid, profileMessage);
                 });
             } else {
-                sender.sendMessage(Colors.translate("&6Profile: &b" + data.getProfileUrl()));
+                sender.sendMessage(localeManager.getMessage("player_lookup.profile_fallback", Map.of("url", profileUrl)));
             }
         }
 
-        sender.sendMessage(Colors.translate("&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+        sender.sendMessage(localeManager.getMessage("player_lookup.footer"));
     }
 
     private String formatDate(String isoDate) {
@@ -240,5 +320,45 @@ public class PlayerLookupCommand extends BaseCommand {
             case "resolved": return "&2";
             default: return "&7";
         }
+    }
+    
+    /**
+     * Get the display name for a punishment type
+     * @param typeId The punishment type ID or ordinal from the API
+     * @return The human-readable name or "Unknown" if not found
+     */
+    private String getPunishmentTypeName(String typeId) {
+        if (typeId == null) return "Unknown";
+        
+        // Try to get the name from the cache
+        String name = punishmentTypeNames.get(typeId);
+        if (name != null) return name;
+        
+        // Enhanced fallback - try to parse the type ID if it looks like a known punishment
+        try {
+            // If it's a number, map common punishment type IDs
+            int id = Integer.parseInt(typeId);
+            switch (id) {
+                case 1: return "Ban";
+                case 2: return "Mute";
+                case 3: return "Kick";
+                case 4: return "Warning";
+                case 5: return "Blacklist";
+                case 6: return "Silence";
+                default: break;
+            }
+        } catch (NumberFormatException ignored) {
+            // Check if the typeId itself contains punishment information
+            String lower = typeId.toLowerCase();
+            if (lower.contains("ban")) return "Ban";
+            if (lower.contains("mute")) return "Mute";
+            if (lower.contains("kick")) return "Kick";
+            if (lower.contains("warn")) return "Warning";
+            if (lower.contains("blacklist")) return "Blacklist";
+            if (lower.contains("silence")) return "Silence";
+        }
+        
+        // If not found in cache, return the type ID as fallback
+        return typeId;
     }
 }

@@ -23,6 +23,14 @@ public class Cache {
     public void cacheMute(UUID playerUuid, SimplePunishment mute) {
         cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setSimpleMute(mute);
     }
+    
+    public void cacheBan(UUID playerUuid, Punishment ban) {
+        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setBan(ban);
+    }
+    
+    public void cacheBan(UUID playerUuid, SimplePunishment ban) {
+        cache.computeIfAbsent(playerUuid, k -> new CachedPlayerData()).setSimpleBan(ban);
+    }
 
     public boolean isMuted(UUID playerUuid) {
         CachedPlayerData data = cache.get(playerUuid);
@@ -63,6 +71,51 @@ public class Cache {
         if (data != null) {
             data.setMute(null);
             data.setSimpleMute(null);
+            if (data.isEmpty()) {
+                cache.remove(playerUuid);
+            }
+        }
+    }
+    
+    public boolean isBanned(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        if (data == null) {
+            return false;
+        }
+        
+        // Check SimplePunishment first (new format)
+        if (data.getSimpleBan() != null) {
+            SimplePunishment ban = data.getSimpleBan();
+            if (ban.isExpired()) {
+                removeBan(playerUuid);
+                return false;
+            }
+            return true;
+        }
+        
+        // Fallback to old Punishment format
+        if (data.getBan() != null) {
+            Punishment ban = data.getBan();
+            if (ban.getExpires() != null && ban.getExpires().before(new java.util.Date())) {
+                removeBan(playerUuid);
+                return false;
+            }
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public Punishment getBan(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        return data != null ? data.getBan() : null;
+    }
+    
+    public void removeBan(UUID playerUuid) {
+        CachedPlayerData data = cache.get(playerUuid);
+        if (data != null) {
+            data.setBan(null);
+            data.setSimpleBan(null);
             if (data.isEmpty()) {
                 cache.remove(playerUuid);
             }
@@ -122,7 +175,8 @@ public class Cache {
             notification.getMessage(),
             notification.getType(),
             notification.getTimestamp(),
-            System.currentTimeMillis() // Cache time
+            System.currentTimeMillis(), // Cache time
+            notification.getData() // Preserve additional data like ticket URLs
         );
         
         pendingNotificationsCache.computeIfAbsent(playerUuid, k -> new ArrayList<>()).add(pending);
@@ -193,10 +247,12 @@ public class Cache {
     public static class CachedPlayerData {
         private Punishment mute;
         private SimplePunishment simpleMute;
+        private Punishment ban;
+        private SimplePunishment simpleBan;
         private SyncResponse.ActiveStaffMember staffMember;
         
         public boolean isEmpty() {
-            return mute == null && simpleMute == null && staffMember == null;
+            return mute == null && simpleMute == null && ban == null && simpleBan == null && staffMember == null;
         }
     }
     
@@ -218,13 +274,15 @@ public class Cache {
         private final String type;
         private final Long timestamp;
         private final long cachedTime;
+        private final Map<String, Object> data;
         
-        public PendingNotification(String id, String message, String type, Long timestamp, long cachedTime) {
+        public PendingNotification(String id, String message, String type, Long timestamp, long cachedTime, Map<String, Object> data) {
             this.id = id;
             this.message = message;
             this.type = type;
             this.timestamp = timestamp;
             this.cachedTime = cachedTime;
+            this.data = data != null ? new HashMap<>(data) : new HashMap<>();
         }
         
         /**
@@ -233,5 +291,19 @@ public class Cache {
         public boolean isExpired() {
             return (System.currentTimeMillis() - cachedTime) > 24 * 60 * 60 * 1000; // 24 hours
         }
+    }
+    
+    /**
+     * Get the number of staff members with cached permissions
+     */
+    public int getStaffCount() {
+        return staffPermissionsCache.size();
+    }
+    
+    /**
+     * Get the number of players with cached punishment data
+     */
+    public int getCachedPlayerCount() {
+        return cache.size();
     }
 }
